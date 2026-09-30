@@ -1,17 +1,24 @@
 package it.unicam.cs.mpgc.rpg122627;
 
-//TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
-// click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
+import it.unicam.cs.mpgc.rpg122627.model.character.Hero;
+
 public class Main {
     public static void main(String[] args) {
-        //TIP Press <shortcut actionId="ShowIntentionActions"/> with your caret at the highlighted text
-        // to see how IntelliJ IDEA suggests fixing it.
-        System.out.printf("Hello and welcome!");
+        Hero marco = new Hero("Marco l'Intrepido", 30, 5, 2);
+        System.out.println("Creato: " + marco);
 
-        for (int i = 1; i <= 5; i++) {
-            //TIP Press <shortcut actionId="Debug"/> to start debugging your code. We have set one <icon src="AllIcons.Debugger.Db_set_breakpoint"/> breakpoint
-            // for you, but you can always add more by pressing <shortcut actionId="ToggleLineBreakpoint"/>.
-            System.out.println("i = " + i);
-        }
+        marco.takeDamage(10);
+        System.out.println("Dopo aver subito 10 danni: " + marco);
+
+        marco.heal(3);
+        System.out.println("Dopo essersi curato di 3: " + marco);
+
+        marco.gainExperience(250);
+        System.out.println("Dopo aver guadagnato 250 XP: " + marco);
+
+        System.out.println("È morto? " + marco.isDead());
+        marco.takeDamage(1000);
+        System.out.println("Dopo 1000 danni: " + marco);
+        System.out.println("È morto? " + marco.isDead());
     }
 }

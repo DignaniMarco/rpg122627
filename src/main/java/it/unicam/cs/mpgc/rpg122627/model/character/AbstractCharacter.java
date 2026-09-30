@@ -14,7 +14,7 @@ import java.util.Objects;
 public abstract class AbstractCharacter implements Character {
 
     private final String name;
-    private final int maxHp;
+    private int maxHp;
     private int currentHp;
 
     /**
@@ -78,5 +78,24 @@ public abstract class AbstractCharacter implements Character {
     @Override
     public String toString() {
         return "%s [HP: %d/%d]".formatted(name, currentHp, maxHp);
+    }
+    /**
+     * Aumenta gli HP massimi del personaggio e cura della stessa quantità
+     * gli HP correnti, così che la percentuale di vita rimanga inalterata
+     * quando si sale di livello.
+     * <p>
+     * Metodo {@code protected}: può essere invocato solo dalle sottoclassi,
+     * per evitare che chiunque possa modificare arbitrariamente le
+     * statistiche del personaggio (es. dalla GUI o dalla persistenza).
+     *
+     * @param amount incremento agli HP massimi (positivo)
+     * @throws IllegalArgumentException se amount non è positivo
+     */
+    protected final void increaseMaxHp(int amount) {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("maxHp increase must be positive, got " + amount);
+        }
+        this.maxHp += amount;
+        this.currentHp += amount;
     }
 }
