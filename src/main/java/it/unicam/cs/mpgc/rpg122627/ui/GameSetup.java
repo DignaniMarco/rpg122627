@@ -53,12 +53,18 @@ public final class GameSetup {
                 new TreasureRoom("Camera del tesoro",
                         "Uno scrigno brilla nell'angolo.",
                         new HealingPotion("Pozione Rossa", 15)),
+                new TreasureRoom("Armeria abbandonata",
+                        "Spade arrugginite appese alle pareti. Una brilla ancora.",
+                        new Weapon("Spada Lunga", 3)),
                 new CombatRoom("Cripta",
                         "Ossa sparse ovunque. Un rumore secco rompe il silenzio.",
                         new Enemy("Scheletro Guerriero", 15, 5, 2, 40, new AggressiveBehavior())),
+                new TreasureRoom("Santuario dimenticato",
+                        "Un altare di pietra. Sopra, una pozione luminosa.",
+                        new HealingPotion("Pozione Maggiore", 25)),
                 new BossRoom("Antro del drago",
                         "Il calore è insopportabile. Un ruggito scuote le mura.",
-                        new Enemy("Drago Rosso", 40, 10, 3, 150, new AggressiveBehavior()))
+                        new Enemy("Drago Rosso", 30, 8, 2, 200, new AggressiveBehavior()))
         ));
     }
 

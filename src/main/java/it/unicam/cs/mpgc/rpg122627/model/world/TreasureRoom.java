@@ -2,6 +2,8 @@ package it.unicam.cs.mpgc.rpg122627.model.world;
 
 import it.unicam.cs.mpgc.rpg122627.model.character.Hero;
 import it.unicam.cs.mpgc.rpg122627.model.item.Item;
+import it.unicam.cs.mpgc.rpg122627.model.item.Armor;
+import it.unicam.cs.mpgc.rpg122627.model.item.Weapon;
 
 import java.util.Objects;
 
@@ -45,8 +47,35 @@ public class TreasureRoom implements Room {
                             .formatted(treasure.getName(), hero.getName()));
         }
         looted = true;
+
+        // Auto-equip se è un'arma/armatura migliore di quella corrente.
+        // Scelta pragmatica MVP: nel gioco non c'è ancora una GUI di equipaggiamento,
+        // quindi l'eroe equipaggia automaticamente l'oggetto se migliora le statistiche.
+        // Una futura estensione sostituirà questo auto-equip con una scelta esplicita del giocatore.
+        String bonusMessage = autoEquipIfBetter(hero);
+
         return RoomEvent.item(
-                "%s trova %s!".formatted(hero.getName(), treasure.getName()),
+                "%s trova %s!%s".formatted(hero.getName(), treasure.getName(), bonusMessage),
                 treasure);
+    }
+
+    private String autoEquipIfBetter(Hero hero) {
+        if (treasure instanceof Weapon w) {
+            int currentBonus = (hero.getEquippedWeapon() != null)
+                    ? hero.getEquippedWeapon().getAttackBonus() : 0;
+            if (w.getAttackBonus() > currentBonus) {
+                hero.equipWeapon(w);
+                return " (equipaggiata automaticamente)";
+            }
+        }
+        if (treasure instanceof Armor a) {
+            int currentBonus = (hero.getEquippedArmor() != null)
+                    ? hero.getEquippedArmor().getDefenseBonus() : 0;
+            if (a.getDefenseBonus() > currentBonus) {
+                hero.equipArmor(a);
+                return " (equipaggiata automaticamente)";
+            }
+        }
+        return "";
     }
 }
