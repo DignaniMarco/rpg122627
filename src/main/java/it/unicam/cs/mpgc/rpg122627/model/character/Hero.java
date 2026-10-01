@@ -1,15 +1,20 @@
 package it.unicam.cs.mpgc.rpg122627.model.character;
 
+import it.unicam.cs.mpgc.rpg122627.model.item.Armor;
+import it.unicam.cs.mpgc.rpg122627.model.item.Inventory;
+import it.unicam.cs.mpgc.rpg122627.model.item.Weapon;
+
 /**
  * Personaggio giocante controllato dall'utente.
  * <p>
- * Un Hero possiede un livello, punti esperienza (XP) e statistiche base
- * di attacco e difesa. Salendo di livello, le sue statistiche aumentano.
+ * Un Hero possiede un livello, punti esperienza (XP), un {@link Inventory}
+ * di oggetti, e due slot di equipaggiamento (arma e armatura) che
+ * modificano rispettivamente il danno inflitto e la difesa.
  * <p>
- * In questa versione l'attacco e la difesa dipendono solo dalle statistiche
- * base del personaggio. Nelle prossime iterazioni verranno estesi per
- * tenere conto dell'arma equipaggiata e dell'armatura (senza modificare
- * questa classe: il contratto pubblico rimarrà invariato).
+ * Il calcolo di attacco e difesa delega all'equipaggiamento: in questo
+ * modo, introdurre nuovi tipi di arma o armatura richiede solo nuove
+ * istanze delle rispettive classi, mai modifiche a {@code Hero}
+ * (Open/Closed Principle).
  */
 public class Hero extends AbstractCharacter {
 
@@ -22,15 +27,10 @@ public class Hero extends AbstractCharacter {
     private int baseAttack;
     private int baseDefense;
 
-    /**
-     * Costruisce un eroe di livello 1 con le statistiche iniziali fornite.
-     *
-     * @param name        nome dell'eroe (non nullo, non vuoto)
-     * @param maxHp       punti vita massimi iniziali (positivi)
-     * @param baseAttack  valore di attacco base (non negativo)
-     * @param baseDefense valore di difesa base (non negativo)
-     * @throws IllegalArgumentException se baseAttack o baseDefense sono negativi
-     */
+    private final Inventory inventory;
+    private Weapon equippedWeapon;
+    private Armor equippedArmor;
+
     public Hero(String name, int maxHp, int baseAttack, int baseDefense) {
         super(name, maxHp);
         if (baseAttack < 0) {
@@ -43,39 +43,68 @@ public class Hero extends AbstractCharacter {
         this.experience = 0;
         this.baseAttack = baseAttack;
         this.baseDefense = baseDefense;
+        this.inventory = new Inventory();
     }
 
     @Override
     public int getAttackDamage() {
-        return baseAttack;
+        int weaponBonus = (equippedWeapon != null) ? equippedWeapon.getAttackBonus() : 0;
+        return baseAttack + weaponBonus;
     }
 
     @Override
     public int getDefense() {
-        return baseDefense;
+        int armorBonus = (equippedArmor != null) ? equippedArmor.getDefenseBonus() : 0;
+        return baseDefense + armorBonus;
     }
 
-    /**
-     * @return il livello corrente dell'eroe
-     */
     public int getLevel() {
         return level;
     }
 
-    /**
-     * @return i punti esperienza correnti
-     */
     public int getExperience() {
         return experience;
     }
 
+    public Inventory getInventory() {
+        return inventory;
+    }
+
+    public Weapon getEquippedWeapon() {
+        return equippedWeapon;
+    }
+
+    public Armor getEquippedArmor() {
+        return equippedArmor;
+    }
+
     /**
-     * Aggiunge punti esperienza all'eroe, gestendo automaticamente
-     * eventuali passaggi di livello.
+     * Equipaggia un'arma. L'arma deve essere già nell'inventario.
+     * L'arma precedentemente equipaggiata (se presente) resta nell'inventario.
      *
-     * @param amount XP da aggiungere (non negativa)
-     * @throws IllegalArgumentException se amount è negativa
+     * @param weapon arma da equipaggiare (nullo = disequipaggia)
+     * @throws IllegalArgumentException se l'arma non è nell'inventario
      */
+    public void equipWeapon(Weapon weapon) {
+        if (weapon != null && !inventory.getItems().contains(weapon)) {
+            throw new IllegalArgumentException("weapon must be in inventory before equipping");
+        }
+        this.equippedWeapon = weapon;
+    }
+
+    /**
+     * Equipaggia un'armatura. L'armatura deve essere già nell'inventario.
+     *
+     * @param armor armatura da equipaggiare (nullo = disequipaggia)
+     * @throws IllegalArgumentException se l'armatura non è nell'inventario
+     */
+    public void equipArmor(Armor armor) {
+        if (armor != null && !inventory.getItems().contains(armor)) {
+            throw new IllegalArgumentException("armor must be in inventory before equipping");
+        }
+        this.equippedArmor = armor;
+    }
+
     public void gainExperience(int amount) {
         if (amount < 0) {
             throw new IllegalArgumentException("experience gain must not be negative");
@@ -87,10 +116,6 @@ public class Hero extends AbstractCharacter {
         }
     }
 
-    /**
-     * Applica un passaggio di livello: aumenta livello, HP massimi
-     * (curando l'eroe della differenza) e statistiche base.
-     */
     private void levelUp() {
         this.level++;
         this.baseAttack += STAT_GAIN_PER_LEVEL;
@@ -100,8 +125,11 @@ public class Hero extends AbstractCharacter {
 
     @Override
     public String toString() {
-        return "%s [Lv%d, HP: %d/%d, ATK: %d, DEF: %d, XP: %d/%d]".formatted(
-                getName(), level, getCurrentHp(), getMaxHp(),
-                baseAttack, baseDefense, experience, XP_PER_LEVEL);
+        String weapon = (equippedWeapon != null) ? equippedWeapon.getName() : "—";
+        String armor = (equippedArmor != null) ? equippedArmor.getName() : "—";
+        return "%s [Lv%d, HP: %d/%d, ATK: %d, DEF: %d, XP: %d/%d, Arma: %s, Armatura: %s]"
+                .formatted(getName(), level, getCurrentHp(), getMaxHp(),
+                        getAttackDamage(), getDefense(), experience, XP_PER_LEVEL,
+                        weapon, armor);
     }
 }
