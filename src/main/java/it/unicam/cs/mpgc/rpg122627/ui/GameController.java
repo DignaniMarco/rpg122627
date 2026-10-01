@@ -12,7 +12,7 @@ import it.unicam.cs.mpgc.rpg122627.persistence.SaveManager;
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ChoiceDialog;
-import javafx.stage.Stage;
+
 
 import java.io.IOException;
 import java.util.List;
@@ -30,15 +30,13 @@ import java.util.Optional;
 public class GameController {
 
     private final GameView view;
-    private final Stage stage;
     private final SaveManager saveManager;
     private final ItemCatalog itemCatalog;
 
     private Game game;
 
-    public GameController(GameView view, Stage stage) {
+    public GameController(GameView view) {
         this.view = view;
-        this.stage = stage;
         this.saveManager = new JsonSaveManager();
         this.itemCatalog = new ItemCatalog();
         wireButtons();
@@ -128,12 +126,24 @@ public class GameController {
             showInfo("Non hai oggetti consumabili.");
             return;
         }
-        ChoiceDialog<Consumable> dialog = new ChoiceDialog<>(consumables.get(0), consumables);
+
+        // Costruisco le etichette "nome — descrizione" e le mostro al dialog.
+        // Poi, in base all'indice scelto, ricavo l'oggetto Consumable corrispondente.
+        List<String> labels = consumables.stream()
+                .map(c -> c.getName() + " — " + c.getDescription())
+                .toList();
+
+        ChoiceDialog<String> dialog = new ChoiceDialog<>(labels.getFirst(), labels);
         dialog.setTitle("Usa oggetto");
         dialog.setHeaderText("Scegli un oggetto da usare");
         dialog.setContentText("Oggetto:");
-        Optional<Consumable> choice = dialog.showAndWait();
-        choice.ifPresent(c -> onPlayerAction(game.playerUseItem(c)));
+
+        Optional<String> choice = dialog.showAndWait();
+        choice.ifPresent(label -> {
+            int index = labels.indexOf(label);
+            Consumable selected = consumables.get(index);
+            onPlayerAction(game.playerUseItem(selected));
+        });
     }
 
     private void onInventory() {

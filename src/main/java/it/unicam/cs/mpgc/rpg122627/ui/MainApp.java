@@ -14,7 +14,7 @@ public class MainApp extends Application {
     @Override
     public void start(Stage primaryStage) {
         GameView view = new GameView();
-        GameController controller = new GameController(view, primaryStage);
+        GameController controller = new GameController(view);
 
         primaryStage.setTitle("RPG122627 — Dungeon Crawler");
         primaryStage.setScene(view.buildScene());
