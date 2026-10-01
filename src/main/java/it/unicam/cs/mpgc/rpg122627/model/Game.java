@@ -3,14 +3,19 @@ package it.unicam.cs.mpgc.rpg122627.model;
 import it.unicam.cs.mpgc.rpg122627.model.character.Enemy;
 import it.unicam.cs.mpgc.rpg122627.model.character.Hero;
 import it.unicam.cs.mpgc.rpg122627.model.combat.*;
+import it.unicam.cs.mpgc.rpg122627.model.item.Armor;
 import it.unicam.cs.mpgc.rpg122627.model.item.Consumable;
+import it.unicam.cs.mpgc.rpg122627.model.item.Item;
+import it.unicam.cs.mpgc.rpg122627.model.item.Weapon;
 import it.unicam.cs.mpgc.rpg122627.model.world.Dungeon;
 import it.unicam.cs.mpgc.rpg122627.model.world.Room;
 import it.unicam.cs.mpgc.rpg122627.model.world.RoomEvent;
+import it.unicam.cs.mpgc.rpg122627.persistence.GameState;
+import it.unicam.cs.mpgc.rpg122627.persistence.ItemCatalog;
 
-import java.util.Objects;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Facciata del modello di gioco: unico punto d'ingresso che la GUI usa
@@ -19,7 +24,7 @@ import java.util.List;
  * Il Game gestisce internamente la macchina a stati (esplorazione,
  * combattimento, vittoria, sconfitta), coordina {@link Dungeon} e
  * {@link Combat}, e restituisce ad ogni azione un {@link GameUpdate}
- * che contiene stato aggiornato e messaggio per il log.
+ * che contiene stato aggiornato e messaggi per il log.
  * <p>
  * In questo modo la GUI non conosce le classi del modello interno:
  * dipende solo dal contratto pubblico di questa facciata e dai suoi
@@ -178,6 +183,26 @@ public class Game {
     }
 
     /**
+     * Genera i messaggi testuali che descrivono la fine del combattimento:
+     * sconfitta del nemico, XP guadagnata, oppure morte dell'eroe.
+     * <p>
+     * Chiamato prima di {@link #resolveCombatEnd()} così da avere ancora
+     * accesso al Combat corrente.
+     */
+    private List<String> buildCombatEndMessages(Enemy enemy) {
+        List<String> messages = new ArrayList<>();
+        if (hero.isDead()) {
+            messages.add("%s è stato sconfitto da %s.".formatted(hero.getName(), enemy.getName()));
+            return messages;
+        }
+        if (currentCombat.heroWon()) {
+            messages.add("%s è sconfitto!".formatted(enemy.getName()));
+            messages.add("%s guadagna %d XP.".formatted(hero.getName(), enemy.getXpReward()));
+        }
+        return messages;
+    }
+
+    /**
      * Determina l'esito finale del combattimento e aggiorna lo stato del gioco.
      * Chiamato automaticamente non appena il combattimento termina.
      */
@@ -203,30 +228,113 @@ public class Game {
         this.currentCombat = null;
     }
 
-    /**
-     * Genera i messaggi testuali che descrivono la fine del combattimento:
-     * sconfitta del nemico, XP guadagnata, oppure morte dell'eroe.
-     * <p>
-     * Chiamato prima di {@link #resolveCombatEnd()} così da avere ancora
-     * accesso al Combat corrente.
-     */
-    private List<String> buildCombatEndMessages(Enemy enemy) {
-        List<String> messages = new ArrayList<>();
-        if (hero.isDead()) {
-            messages.add("%s è stato sconfitto da %s.".formatted(hero.getName(), enemy.getName()));
-            return messages;
-        }
-        if (currentCombat.heroWon()) {
-            messages.add("%s è sconfitto!".formatted(enemy.getName()));
-            messages.add("%s guadagna %d XP.".formatted(hero.getName(), enemy.getXpReward()));
-        }
-        return messages;
-    }
-
     private void requireStatus(GameStatus expected) {
         if (status != expected) {
             throw new IllegalStateException(
                     "operation requires status " + expected + " but current is " + status);
         }
+    }
+
+    // ========== Persistenza ==========
+
+    /**
+     * Produce una fotografia serializzabile dello stato corrente della partita.
+     */
+    public GameState exportState() {
+        GameState s = new GameState();
+        s.setHeroName(hero.getName());
+        s.setHeroLevel(hero.getLevel());
+        s.setHeroExperience(hero.getExperience());
+        s.setHeroCurrentHp(hero.getCurrentHp());
+        s.setHeroMaxHp(hero.getMaxHp());
+        // Nota: salviamo i valori "base" non quelli con bonus arma/armatura,
+        // perché gli equipaggiamenti vengono ricreati separatamente.
+        int baseAttack = hero.getAttackDamage()
+                - (hero.getEquippedWeapon() != null ? hero.getEquippedWeapon().getAttackBonus() : 0);
+        int baseDefense = hero.getDefense()
+                - (hero.getEquippedArmor() != null ? hero.getEquippedArmor().getDefenseBonus() : 0);
+        s.setHeroBaseAttack(baseAttack);
+        s.setHeroBaseDefense(baseDefense);
+
+        List<String> itemNames = new ArrayList<>();
+        for (Item item : hero.getInventory().getItems()) {
+            itemNames.add(item.getName());
+        }
+        s.setInventoryItemNames(itemNames);
+        s.setEquippedWeaponName(
+                hero.getEquippedWeapon() != null ? hero.getEquippedWeapon().getName() : null);
+        s.setEquippedArmorName(
+                hero.getEquippedArmor() != null ? hero.getEquippedArmor().getName() : null);
+        s.setCurrentRoomIndex(dungeon.getCurrentIndex());
+        return s;
+    }
+
+    /**
+     * Ricostruisce un {@link Game} da uno stato serializzato.
+     * <p>
+     * Richiede un {@link Dungeon} pre-costruito (le definizioni delle stanze
+     * sono considerate dati statici del gioco) e un {@link ItemCatalog}
+     * per ricreare gli oggetti dall'elenco di nomi salvato.
+     * <p>
+     * Il metodo porta il dungeon all'indice salvato ma non richiama
+     * {@code onEnter} sulla stanza corrente: sarà la GUI a decidere se
+     * ri-mostrare l'evento della stanza o riprendere direttamente.
+     *
+     * @throws IllegalArgumentException se un oggetto nel save non esiste nel catalogo
+     */
+    public static Game fromState(GameState state, Dungeon dungeon, ItemCatalog catalog) {
+        Objects.requireNonNull(state, "state must not be null");
+        Objects.requireNonNull(dungeon, "dungeon must not be null");
+        Objects.requireNonNull(catalog, "catalog must not be null");
+
+        Hero hero = new Hero(
+                state.getHeroName(),
+                state.getHeroMaxHp(),
+                state.getHeroBaseAttack(),
+                state.getHeroBaseDefense());
+
+        // Ripristina livello ed XP esattamente come erano salvati
+        hero.restoreFromSave(state.getHeroLevel(), state.getHeroExperience());
+
+        // Ripristina HP correnti: curiamo al max, poi applichiamo danno
+        int damage = state.getHeroMaxHp() - state.getHeroCurrentHp();
+        if (damage > 0) {
+            hero.takeDamage(damage);
+        }
+
+        // Ripristina inventario
+        for (String itemName : state.getInventoryItemNames()) {
+            Item item = catalog.getByName(itemName)
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "unknown item in save: " + itemName));
+            hero.getInventory().add(item);
+        }
+
+        // Ripristina equipaggiamento (riusa le stesse istanze dell'inventario)
+        if (state.getEquippedWeaponName() != null) {
+            Weapon w = hero.getInventory().getItems().stream()
+                    .filter(i -> i instanceof Weapon && i.getName().equals(state.getEquippedWeaponName()))
+                    .map(i -> (Weapon) i)
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "equipped weapon not in inventory: " + state.getEquippedWeaponName()));
+            hero.equipWeapon(w);
+        }
+        if (state.getEquippedArmorName() != null) {
+            Armor a = hero.getInventory().getItems().stream()
+                    .filter(i -> i instanceof Armor && i.getName().equals(state.getEquippedArmorName()))
+                    .map(i -> (Armor) i)
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "equipped armor not in inventory: " + state.getEquippedArmorName()));
+            hero.equipArmor(a);
+        }
+
+        // Riporta il dungeon all'indice salvato
+        while (dungeon.getCurrentIndex() < state.getCurrentRoomIndex()) {
+            dungeon.advance();
+        }
+
+        return new Game(hero, dungeon);
     }
 }

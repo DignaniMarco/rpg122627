@@ -116,6 +116,30 @@ public class Hero extends AbstractCharacter {
         }
     }
 
+    /**
+     * Ripristina livello ed esperienza da un salvataggio.
+     * <p>
+     * Metodo pensato esclusivamente per la persistenza: imposta direttamente
+     * i valori senza passare dalla progressione normale (che farebbe salire
+     * di livello e aggiungerebbe stat), così lo stato ricostruito è identico
+     * a quello salvato. Non va mai usato dalla logica di gioco: durante la
+     * partita, l'XP si guadagna solo con {@link #gainExperience(int)}.
+     *
+     * @param level      livello da ripristinare (>= 1)
+     * @param experience XP residua verso il livello successivo (0 <= xp < 100)
+     */
+    public void restoreFromSave(int level, int experience) {
+        if (level < 1) {
+            throw new IllegalArgumentException("level must be >= 1");
+        }
+        if (experience < 0 || experience >= XP_PER_LEVEL) {
+            throw new IllegalArgumentException(
+                    "experience must be in [0, " + XP_PER_LEVEL + "), got " + experience);
+        }
+        this.level = level;
+        this.experience = experience;
+    }
+
     private void levelUp() {
         this.level++;
         this.baseAttack += STAT_GAIN_PER_LEVEL;
