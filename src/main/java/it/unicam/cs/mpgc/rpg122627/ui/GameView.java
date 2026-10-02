@@ -66,6 +66,8 @@ public class GameView {
         box.setPadding(new Insets(0, 0, StylePresets.PADDING, 0));
         heroInfoLabel.setFont(Font.font("Monospaced", FontWeight.BOLD, 14));
         dungeonInfoLabel.setFont(Font.font("Monospaced", 12));
+        heroInfoLabel.setWrapText(true);
+        dungeonInfoLabel.setWrapText(true);
         box.getChildren().addAll(heroInfoLabel, dungeonInfoLabel);
         return box;
     }
@@ -91,6 +93,7 @@ public class GameView {
         box.setPadding(new Insets(StylePresets.PADDING, 0, 0, 0));
         box.setAlignment(Pos.CENTER);
         enemyInfoLabel.setFont(Font.font("Monospaced", FontWeight.BOLD, 13));
+        enemyInfoLabel.setWrapText(true);
         box.getChildren().addAll(enemyInfoLabel, actionPanel);
         return box;
     }

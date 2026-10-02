@@ -12,6 +12,7 @@ import it.unicam.cs.mpgc.rpg122627.persistence.SaveManager;
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ChoiceDialog;
+import it.unicam.cs.mpgc.rpg122627.model.character.Enemy;
 
 
 import java.io.IOException;
@@ -174,7 +175,7 @@ public class GameController {
 
     private void refreshUI() {
         Hero h = game.getHero();
-        view.setHeroInfo(h.toString());
+        view.setHeroInfo(formatHeroInfo(h));
         view.setDungeonInfo("Stanza " + (game.getDungeon().getCurrentIndex() + 1)
                 + " di " + game.getDungeon().getSize());
         view.setRoomInfo(game.getCurrentRoom().getName(),
@@ -186,7 +187,7 @@ public class GameController {
                 view.showExplorationButtons(!game.getDungeon().isAtLastRoom());
             }
             case IN_COMBAT -> {
-                view.setEnemyInfo("Nemico: " + game.getCurrentCombat().getEnemy());
+                view.setEnemyInfo(formatEnemyInfo(game.getCurrentCombat().getEnemy()));
                 view.showCombatButtons();
             }
             case VICTORY -> {
@@ -200,6 +201,30 @@ public class GameController {
                 view.showEndButtons();
             }
         }
+    }
+
+    /**
+     * Formatta le statistiche dell'eroe su più righe, in modo leggibile per la GUI.
+     */
+    private String formatHeroInfo(Hero h) {
+        String weapon = (h.getEquippedWeapon() != null) ? h.getEquippedWeapon().getName() : "—";
+        String armor = (h.getEquippedArmor() != null) ? h.getEquippedArmor().getName() : "—";
+        return "%s — Livello %d%nHP: %d/%d  |  ATK: %d  |  DEF: %d  |  XP: %d/100%nArma: %s  |  Armatura: %s"
+                .formatted(h.getName(), h.getLevel(),
+                        h.getCurrentHp(), h.getMaxHp(),
+                        h.getAttackDamage(), h.getDefense(),
+                        h.getExperience(),
+                        weapon, armor);
+    }
+
+    /**
+     * Formatta le statistiche del nemico in combattimento, mostrando anche ATK, DEF e XP.
+     */
+    private String formatEnemyInfo(Enemy e) {        return "Nemico: %s%nHP: %d/%d  |  ATK: %d  |  DEF: %d  |  Ricompensa: %d XP"
+                .formatted(e.getName(),
+                        e.getCurrentHp(), e.getMaxHp(),
+                        e.getAttackDamage(), e.getDefense(),
+                        e.getXpReward());
     }
 
     private void showInfo(String message) {
