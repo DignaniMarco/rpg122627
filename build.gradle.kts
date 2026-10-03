@@ -24,8 +24,7 @@ javafx {
 
 dependencies {
     // JSON per la persistenza
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.17.2")
-
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.18.1")
     // Test
     testImplementation(platform("org.junit:junit-bom:5.10.3"))
     testImplementation("org.junit.jupiter:junit-jupiter")
@@ -39,4 +38,29 @@ application {
 
 tasks.test {
     useJUnitPlatform()
+    testLogging {
+        events("passed", "failed", "skipped")
+        showStandardStreams = true
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
+    addTestListener(object : TestListener {
+        override fun beforeSuite(suite: TestDescriptor) {}
+        override fun beforeTest(testDescriptor: TestDescriptor) {}
+        override fun afterTest(testDescriptor: TestDescriptor, result: TestResult) {}
+        override fun afterSuite(desc: TestDescriptor, result: TestResult) {
+            if (desc.parent == null) {
+                val total = result.testCount
+                val passed = result.successfulTestCount
+                val failed = result.failedTestCount
+                val skipped = result.skippedTestCount
+                val duration = "%.2f".format((result.endTime - result.startTime) / 1000.0)
+                println("")
+                println("┌──────────────────────────────────────────────┐")
+                println("│  Test results: ${result.resultType}")
+                println("│  Total: $total   Passed: $passed   Failed: $failed   Skipped: $skipped")
+                println("│  Duration: ${duration}s")
+                println("└──────────────────────────────────────────────┘")
+            }
+        }
+    })
 }
