@@ -3,6 +3,9 @@ package it.unicam.cs.mpgc.rpg122627.model.character;
 import it.unicam.cs.mpgc.rpg122627.model.item.Armor;
 import it.unicam.cs.mpgc.rpg122627.model.item.Inventory;
 import it.unicam.cs.mpgc.rpg122627.model.item.Weapon;
+import it.unicam.cs.mpgc.rpg122627.model.item.Item;
+import java.util.Objects;
+
 
 /**
  * Personaggio giocante controllato dall'utente.
@@ -18,7 +21,7 @@ import it.unicam.cs.mpgc.rpg122627.model.item.Weapon;
  */
 public class Hero extends AbstractCharacter {
 
-    private static final int XP_PER_LEVEL = 100;
+    private static final int XP_PER_LEVEL = 70;
     private static final int HP_GAIN_PER_LEVEL = 5;
     private static final int STAT_GAIN_PER_LEVEL = 1;
 
@@ -78,6 +81,10 @@ public class Hero extends AbstractCharacter {
         return equippedArmor;
     }
 
+    public int getXpPerLevel() {
+        return XP_PER_LEVEL;
+    }
+
     /**
      * Equipaggia un'arma. L'arma deve essere già nell'inventario.
      * L'arma precedentemente equipaggiata (se presente) resta nell'inventario.
@@ -103,6 +110,43 @@ public class Hero extends AbstractCharacter {
             throw new IllegalArgumentException("armor must be in inventory before equipping");
         }
         this.equippedArmor = armor;
+    }
+
+    /**
+     * Prova a equipaggiare automaticamente l'oggetto se è un upgrade.
+     * <ul>
+     *   <li>Arma: equipaggia se il bonus di attacco è strettamente maggiore
+     *       di quello dell'arma attualmente equipaggiata (o se nessuna
+     *       arma è equipaggiata).</li>
+     *   <li>Armatura: equipaggia se il bonus di difesa è strettamente
+     *       maggiore di quello dell'armatura attualmente equipaggiata (o
+     *       se nessuna armatura è equipaggiata).</li>
+     *   <li>Altri oggetti (pozioni, ecc.): nessun effetto.</li>
+     * </ul>
+     * L'oggetto deve essere già presente nell'inventario.
+     *
+     * @param item oggetto appena ottenuto
+     * @return true se un auto-equip è avvenuto, false altrimenti
+     */
+    public boolean tryAutoEquip(Item item) {
+        Objects.requireNonNull(item, "item must not be null");
+        if (item instanceof Weapon newWeapon) {
+            int currentBonus = (equippedWeapon != null) ? equippedWeapon.getAttackBonus() : 0;
+            if (newWeapon.getAttackBonus() > currentBonus) {
+                equipWeapon(newWeapon);
+                return true;
+            }
+            return false;
+        }
+        if (item instanceof Armor newArmor) {
+            int currentBonus = (equippedArmor != null) ? equippedArmor.getDefenseBonus() : 0;
+            if (newArmor.getDefenseBonus() > currentBonus) {
+                equipArmor(newArmor);
+                return true;
+            }
+            return false;
+        }
+        return false;
     }
 
     public void gainExperience(int amount) {

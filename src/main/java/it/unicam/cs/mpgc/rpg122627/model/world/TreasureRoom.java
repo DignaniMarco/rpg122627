@@ -54,9 +54,12 @@ public class TreasureRoom implements Room {
         // Una futura estensione sostituirà questo auto-equip con una scelta esplicita del giocatore.
         String bonusMessage = autoEquipIfBetter(hero);
 
-        return RoomEvent.item(
-                "%s trova %s!%s".formatted(hero.getName(), treasure.getName(), bonusMessage),
-                treasure);
+        boolean equipped = hero.tryAutoEquip(treasure);
+        String message = "%s trova %s!".formatted(hero.getName(), treasure.getName());
+        if (equipped) {
+            message += " L'oggetto è stato equipaggiato automaticamente.";
+        }
+        return RoomEvent.item(message, treasure);
     }
 
     private String autoEquipIfBetter(Hero hero) {

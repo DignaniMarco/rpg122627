@@ -7,13 +7,12 @@ import it.unicam.cs.mpgc.rpg122627.model.item.Armor;
 import it.unicam.cs.mpgc.rpg122627.model.item.Consumable;
 import it.unicam.cs.mpgc.rpg122627.model.item.Item;
 import it.unicam.cs.mpgc.rpg122627.model.item.Weapon;
-import it.unicam.cs.mpgc.rpg122627.model.world.Dungeon;
-import it.unicam.cs.mpgc.rpg122627.model.world.Room;
-import it.unicam.cs.mpgc.rpg122627.model.world.RoomEvent;
+import it.unicam.cs.mpgc.rpg122627.model.world.*;
 import it.unicam.cs.mpgc.rpg122627.persistence.GameState;
 import it.unicam.cs.mpgc.rpg122627.persistence.ItemCatalog;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -22,15 +21,22 @@ import java.util.Objects;
  * per interagire con eroe, dungeon e combattimenti.
  * <p>
  * Il Game gestisce internamente la macchina a stati (esplorazione,
- * combattimento, vittoria, sconfitta), coordina {@link Dungeon} e
- * {@link Combat}, e restituisce ad ogni azione un {@link GameUpdate}
+ * scelta, combattimento, vittoria, sconfitta), coordina {@link Dungeon}
+ * e {@link Combat}, e restituisce ad ogni azione un {@link GameUpdate}
  * che contiene stato aggiornato e messaggi per il log.
  * <p>
- * In questo modo la GUI non conosce le classi del modello interno:
- * dipende solo dal contratto pubblico di questa facciata e dai suoi
- * dati immutabili di stato, rispettando il Dependency Inversion Principle
- * e lasciando libertà di sostituire la GUI (desktop, mobile, web, CLI)
- * senza toccare nessuna classe del modello.
+ * Dalla migrazione a Dungeon come grafo, il flusso di esplorazione
+ * si articola in tre API separate (approccio esplicito):
+ * <ul>
+ *   <li>{@link #advanceToNextRoom()} funziona solo se il nodo corrente
+ *       ha un unico successore (corridoi lineari);</li>
+ *   <li>{@link #getAvailableChoices()} restituisce le opzioni quando
+ *       la stanza corrente è una {@link ChoiceRoom};</li>
+ *   <li>{@link #chooseAndAdvance(ChoiceOption)} applica la scelta e
+ *       passa al nodo di destinazione.</li>
+ * </ul>
+ * Ogni metodo ha un contratto chiaro e lancia eccezione se chiamato
+ * nel momento sbagliato (fail fast).
  */
 public class Game {
 
@@ -41,51 +47,47 @@ public class Game {
     private final Dungeon dungeon;
     private GameStatus status;
     private Combat currentCombat;
+    private List<ChoiceOption> pendingChoices;
 
     public Game(Hero hero, Dungeon dungeon) {
         this.hero = Objects.requireNonNull(hero, "hero must not be null");
         this.dungeon = Objects.requireNonNull(dungeon, "dungeon must not be null");
         this.status = GameStatus.EXPLORING;
         this.currentCombat = null;
+        this.pendingChoices = List.of();
     }
 
-    // ========== Query (consultazione dello stato) ==========
+    // ========== Query ==========
 
-    public Hero getHero() {
-        return hero;
-    }
-
-    public Dungeon getDungeon() {
-        return dungeon;
-    }
-
-    public GameStatus getStatus() {
-        return status;
-    }
-
-    public Room getCurrentRoom() {
-        return dungeon.getCurrentRoom();
-    }
+    public Hero getHero() { return hero; }
+    public Dungeon getDungeon() { return dungeon; }
+    public GameStatus getStatus() { return status; }
+    public Room getCurrentRoom() { return dungeon.getCurrentRoom(); }
+    public Combat getCurrentCombat() { return currentCombat; }
 
     /**
-     * @return il combattimento in corso, se lo stato è IN_COMBAT; null altrimenti.
-     *         La GUI lo usa per mostrare le info del nemico corrente.
+     * @return le opzioni disponibili se siamo in uno stato di scelta,
+     *         altrimenti lista vuota. Non lancia eccezione: la GUI può
+     *         chiamarlo come query a scopo di refresh.
      */
-    public Combat getCurrentCombat() {
-        return currentCombat;
+    public List<ChoiceOption> getAvailableChoices() {
+        return Collections.unmodifiableList(pendingChoices);
     }
 
     // ========== Azioni di esplorazione ==========
 
     /**
      * Fa entrare l'eroe nella stanza corrente e gestisce l'evento conseguente.
-     * Da chiamare all'inizio della partita e dopo ogni {@link #advanceToNextRoom()}.
+     * Lo stato risultante può essere EXPLORING, AWAITING_CHOICE o IN_COMBAT
+     * a seconda del tipo di stanza.
      *
      * @return update che descrive l'esito dell'ingresso
-     * @throws IllegalStateException se lo stato non è EXPLORING
      */
     public GameUpdate enterCurrentRoom() {
-        requireStatus(GameStatus.EXPLORING);
+        if (status != GameStatus.EXPLORING) {
+            throw new IllegalStateException(
+                    "enterCurrentRoom requires EXPLORING, current is " + status);
+        }
         Room room = dungeon.getCurrentRoom();
         RoomEvent event = room.onEnter(hero);
 
@@ -99,65 +101,86 @@ public class Game {
                 this.status = GameStatus.IN_COMBAT;
                 return new GameUpdate(status, event.getMessage());
             }
+            case CHOICE_AWAITING -> {
+                this.pendingChoices = event.getChoices();
+                this.status = GameStatus.AWAITING_CHOICE;
+                List<String> msgs = new ArrayList<>();
+                msgs.add(event.getMessage());
+                for (ChoiceOption opt : pendingChoices) {
+                    msgs.add("• " + opt.getLabel() + " — " + opt.getDescription());
+                }
+                return new GameUpdate(status, msgs);
+            }
         }
         throw new IllegalStateException("unhandled RoomEvent type: " + event.getType());
     }
 
     /**
-     * Avanza alla stanza successiva del dungeon.
-     * Non entra nella nuova stanza automaticamente: va chiamato
-     * {@link #enterCurrentRoom()} subito dopo (la separazione permette
-     * alla GUI di mostrare una transizione se vuole).
+     * Avanza al nodo successivo quando è univocamente determinato.
+     * Non entra nella nuova stanza: la GUI dovrà chiamare poi
+     * {@link #enterCurrentRoom()}.
      *
-     * @throws IllegalStateException se non si è in esplorazione o se
-     *         non c'è una stanza successiva
+     * @throws IllegalStateException se non si è in EXPLORING, se il
+     *         nodo è terminale o se ha più successori (serve
+     *         {@link #chooseAndAdvance(ChoiceOption)})
      */
     public GameUpdate advanceToNextRoom() {
-        requireStatus(GameStatus.EXPLORING);
-        if (dungeon.isAtLastRoom()) {
-            throw new IllegalStateException("no next room available");
+        if (status != GameStatus.EXPLORING) {
+            throw new IllegalStateException(
+                    "advanceToNextRoom requires EXPLORING, current is " + status);
         }
-        Room next = dungeon.advance();
-        return new GameUpdate(status, hero.getName() + " avanza verso " + next.getName() + ".");
+        if (dungeon.isAtTerminalNode()) {
+            throw new IllegalStateException("already at a terminal node");
+        }
+        DungeonNode next = dungeon.advance();
+        return new GameUpdate(status,
+                hero.getName() + " avanza verso " + next.getRoom().getName() + ".");
+    }
+
+    /**
+     * Applica una scelta durante una {@link ChoiceRoom}: avanza al nodo
+     * di destinazione corrispondente e torna in EXPLORING.
+     * La GUI dovrà poi chiamare {@link #enterCurrentRoom()} per
+     * attivare la nuova stanza.
+     *
+     * @throws IllegalStateException se non si è in AWAITING_CHOICE
+     * @throws IllegalArgumentException se l'opzione non è tra quelle disponibili
+     */
+    public GameUpdate chooseAndAdvance(ChoiceOption option) {
+        if (status != GameStatus.AWAITING_CHOICE) {
+            throw new IllegalStateException(
+                    "chooseAndAdvance requires AWAITING_CHOICE, current is " + status);
+        }
+        Objects.requireNonNull(option, "option must not be null");
+        if (!pendingChoices.contains(option)) {
+            throw new IllegalArgumentException("option is not among current choices");
+        }
+        dungeon.advanceTo(option.getDestination());
+        this.pendingChoices = List.of();
+        this.status = GameStatus.EXPLORING;
+        return new GameUpdate(status,
+                hero.getName() + " sceglie: " + option.getLabel() + ".");
     }
 
     // ========== Azioni di combattimento ==========
 
-    public GameUpdate playerAttack() {
-        return executePlayerAction(ATTACK);
-    }
+    public GameUpdate playerAttack()                  { return executePlayerAction(ATTACK); }
+    public GameUpdate playerDefend()                  { return executePlayerAction(DEFEND); }
+    public GameUpdate playerUseItem(Consumable item)  { return executePlayerAction(new UseItemAction(item)); }
+    public GameUpdate playerFlee()                    { return executePlayerAction(new FleeAction()); }
 
-    public GameUpdate playerDefend() {
-        return executePlayerAction(DEFEND);
-    }
-
-    public GameUpdate playerUseItem(Consumable item) {
-        return executePlayerAction(new UseItemAction(item));
-    }
-
-    public GameUpdate playerFlee() {
-        return executePlayerAction(new FleeAction());
-    }
-
-    /**
-     * Esegue il turno del nemico. La GUI deve chiamarlo dopo ogni azione
-     * del giocatore che non ha concluso il combattimento, così può mostrare
-     * i due turni separatamente nel log (prima quello dell'eroe, poi
-     * quello del nemico).
-     */
     public GameUpdate enemyTurn() {
-        requireStatus(GameStatus.IN_COMBAT);
+        if (status != GameStatus.IN_COMBAT) {
+            throw new IllegalStateException("enemyTurn requires IN_COMBAT, current is " + status);
+        }
         if (currentCombat.isOver()) {
-            // caso difensivo: non dovrebbe mai accadere nel flusso normale
             resolveCombatEnd();
             return new GameUpdate(status, "Il combattimento è già terminato.");
         }
         List<String> messages = new ArrayList<>();
         Enemy enemy = currentCombat.getEnemy();
-
         ActionResult result = currentCombat.enemyTurn();
         messages.add(result.getMessage());
-
         if (currentCombat.isOver()) {
             messages.addAll(buildCombatEndMessages(enemy));
             resolveCombatEnd();
@@ -168,13 +191,14 @@ public class Game {
     // ========== Logica interna ==========
 
     private GameUpdate executePlayerAction(Action action) {
-        requireStatus(GameStatus.IN_COMBAT);
+        if (status != GameStatus.IN_COMBAT) {
+            throw new IllegalStateException(
+                    "player action requires IN_COMBAT, current is " + status);
+        }
         List<String> messages = new ArrayList<>();
         Enemy enemy = currentCombat.getEnemy();
-
         ActionResult result = currentCombat.heroTurn(action);
         messages.add(result.getMessage());
-
         if (currentCombat.isOver()) {
             messages.addAll(buildCombatEndMessages(enemy));
             resolveCombatEnd();
@@ -182,13 +206,6 @@ public class Game {
         return new GameUpdate(status, messages);
     }
 
-    /**
-     * Genera i messaggi testuali che descrivono la fine del combattimento:
-     * sconfitta del nemico, XP guadagnata, oppure morte dell'eroe.
-     * <p>
-     * Chiamato prima di {@link #resolveCombatEnd()} così da avere ancora
-     * accesso al Combat corrente.
-     */
     private List<String> buildCombatEndMessages(Enemy enemy) {
         List<String> messages = new ArrayList<>();
         if (hero.isDead()) {
@@ -202,10 +219,6 @@ public class Game {
         return messages;
     }
 
-    /**
-     * Determina l'esito finale del combattimento e aggiorna lo stato del gioco.
-     * Chiamato automaticamente non appena il combattimento termina.
-     */
     private void resolveCombatEnd() {
         if (hero.isDead()) {
             this.status = GameStatus.DEFEAT;
@@ -214,8 +227,8 @@ public class Game {
         }
         if (currentCombat.heroWon()) {
             currentCombat.awardRewards();
-            // Se era un boss e dungeon finito → vittoria
-            if (dungeon.isAtLastRoom()) {
+            // Se era un boss alla fine del dungeon → vittoria
+            if (dungeon.isAtTerminalNode()) {
                 this.status = GameStatus.VICTORY;
             } else {
                 this.status = GameStatus.EXPLORING;
@@ -223,22 +236,17 @@ public class Game {
             this.currentCombat = null;
             return;
         }
-        // Fuga riuscita: torna in esplorazione nella stessa stanza
+        // Fuga riuscita
         this.status = GameStatus.EXPLORING;
         this.currentCombat = null;
-    }
-
-    private void requireStatus(GameStatus expected) {
-        if (status != expected) {
-            throw new IllegalStateException(
-                    "operation requires status " + expected + " but current is " + status);
-        }
     }
 
     // ========== Persistenza ==========
 
     /**
-     * Produce una fotografia serializzabile dello stato corrente della partita.
+     * Produce una fotografia serializzabile dello stato corrente.
+     * Salva l'id del nodo corrente invece dell'indice (il dungeon
+     * è ora un grafo, non più una lista).
      */
     public GameState exportState() {
         GameState s = new GameState();
@@ -247,8 +255,6 @@ public class Game {
         s.setHeroExperience(hero.getExperience());
         s.setHeroCurrentHp(hero.getCurrentHp());
         s.setHeroMaxHp(hero.getMaxHp());
-        // Nota: salviamo i valori "base" non quelli con bonus arma/armatura,
-        // perché gli equipaggiamenti vengono ricreati separatamente.
         int baseAttack = hero.getAttackDamage()
                 - (hero.getEquippedWeapon() != null ? hero.getEquippedWeapon().getAttackBonus() : 0);
         int baseDefense = hero.getDefense()
@@ -265,22 +271,14 @@ public class Game {
                 hero.getEquippedWeapon() != null ? hero.getEquippedWeapon().getName() : null);
         s.setEquippedArmorName(
                 hero.getEquippedArmor() != null ? hero.getEquippedArmor().getName() : null);
-        s.setCurrentRoomIndex(dungeon.getCurrentIndex());
+        s.setCurrentNodeId(dungeon.getCurrentNode().getId());
         return s;
     }
 
     /**
      * Ricostruisce un {@link Game} da uno stato serializzato.
-     * <p>
-     * Richiede un {@link Dungeon} pre-costruito (le definizioni delle stanze
-     * sono considerate dati statici del gioco) e un {@link ItemCatalog}
-     * per ricreare gli oggetti dall'elenco di nomi salvato.
-     * <p>
-     * Il metodo porta il dungeon all'indice salvato ma non richiama
-     * {@code onEnter} sulla stanza corrente: sarà la GUI a decidere se
-     * ri-mostrare l'evento della stanza o riprendere direttamente.
-     *
-     * @throws IllegalArgumentException se un oggetto nel save non esiste nel catalogo
+     * Il dungeon fornito deve avere nodi coerenti con quelli al momento
+     * del salvataggio (stessa topologia e stessi id).
      */
     public static Game fromState(GameState state, Dungeon dungeon, ItemCatalog catalog) {
         Objects.requireNonNull(state, "state must not be null");
@@ -292,17 +290,13 @@ public class Game {
                 state.getHeroMaxHp(),
                 state.getHeroBaseAttack(),
                 state.getHeroBaseDefense());
-
-        // Ripristina livello ed XP esattamente come erano salvati
         hero.restoreFromSave(state.getHeroLevel(), state.getHeroExperience());
 
-        // Ripristina HP correnti: curiamo al max, poi applichiamo danno
         int damage = state.getHeroMaxHp() - state.getHeroCurrentHp();
         if (damage > 0) {
             hero.takeDamage(damage);
         }
 
-        // Ripristina inventario
         for (String itemName : state.getInventoryItemNames()) {
             Item item = catalog.getByName(itemName)
                     .orElseThrow(() -> new IllegalArgumentException(
@@ -310,7 +304,6 @@ public class Game {
             hero.getInventory().add(item);
         }
 
-        // Ripristina equipaggiamento (riusa le stesse istanze dell'inventario)
         if (state.getEquippedWeaponName() != null) {
             Weapon w = hero.getInventory().getItems().stream()
                     .filter(i -> i instanceof Weapon && i.getName().equals(state.getEquippedWeaponName()))
@@ -330,9 +323,8 @@ public class Game {
             hero.equipArmor(a);
         }
 
-        // Riporta il dungeon all'indice salvato
-        while (dungeon.getCurrentIndex() < state.getCurrentRoomIndex()) {
-            dungeon.advance();
+        if (state.getCurrentNodeId() != null) {
+            dungeon.jumpTo(state.getCurrentNodeId());
         }
 
         return new Game(hero, dungeon);

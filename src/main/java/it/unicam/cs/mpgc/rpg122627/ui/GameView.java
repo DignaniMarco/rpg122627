@@ -7,6 +7,7 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
+import java.util.List;
 
 /**
  * Vista principale della GUI: definisce il layout e i componenti grafici,
@@ -170,6 +171,26 @@ public class GameView {
         HBox row = new HBox(StylePresets.SPACING, newGameButton, exitButton);
         row.setAlignment(Pos.CENTER);
         actionPanel.getChildren().add(row);
+    }
+
+    /**
+     * Mostra una scelta tra più opzioni (per le ChoiceRoom).
+     * Il controller fornisce le etichette; i click vengono gestiti via callback.
+     */
+    public void showChoiceButtons(List<javafx.scene.control.Button> optionButtons) {
+        actionPanel.getChildren().clear();
+        VBox box = new VBox(StylePresets.SPACING);
+        box.setAlignment(Pos.CENTER);
+        for (javafx.scene.control.Button b : optionButtons) {
+            String buttonStyle = String.format(
+                    "-fx-background-color: %s; -fx-text-fill: %s; -fx-padding: 8 16; -fx-cursor: hand;",
+                    StylePresets.BG_PANEL, StylePresets.TEXT_PRIMARY);
+            b.setStyle(buttonStyle);
+            b.setMinWidth(400);
+            b.setWrapText(true);
+            box.getChildren().add(b);
+        }
+        actionPanel.getChildren().add(box);
     }
 
     // Getter dei bottoni (per il controller)

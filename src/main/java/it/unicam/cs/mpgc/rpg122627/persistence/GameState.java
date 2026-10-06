@@ -36,8 +36,7 @@ public class GameState {
     private String equippedArmorName;
 
     // --- Dungeon ---
-    private int currentRoomIndex;
-
+    private String currentNodeId;
     // Costruttore vuoto richiesto da Jackson
     public GameState() {
     }
@@ -80,8 +79,8 @@ public class GameState {
         this.equippedArmorName = equippedArmorName;
     }
 
-    public int getCurrentRoomIndex() { return currentRoomIndex; }
-    public void setCurrentRoomIndex(int currentRoomIndex) {
-        this.currentRoomIndex = currentRoomIndex;
+    public String getCurrentNodeId() { return currentNodeId; }
+    public void setCurrentNodeId(String currentNodeId) {
+        this.currentNodeId = currentNodeId;
     }
 }

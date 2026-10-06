@@ -7,6 +7,8 @@ package it.unicam.cs.mpgc.rpg122627.model;
 public enum GameStatus {
     /** L'eroe è in una stanza e può scegliere di avanzare o usare l'inventario. */
     EXPLORING,
+    /** L'eroe è davanti a una scelta tra più percorsi: deve selezionare un'opzione. */
+    AWAITING_CHOICE,
     /** Combattimento in corso: l'eroe deve scegliere un'azione per il proprio turno. */
     IN_COMBAT,
     /** Il dungeon è stato completato (boss sconfitto). */

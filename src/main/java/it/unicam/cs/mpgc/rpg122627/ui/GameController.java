@@ -3,30 +3,27 @@ package it.unicam.cs.mpgc.rpg122627.ui;
 import it.unicam.cs.mpgc.rpg122627.model.Game;
 import it.unicam.cs.mpgc.rpg122627.model.GameStatus;
 import it.unicam.cs.mpgc.rpg122627.model.GameUpdate;
+import it.unicam.cs.mpgc.rpg122627.model.character.Enemy;
 import it.unicam.cs.mpgc.rpg122627.model.character.Hero;
 import it.unicam.cs.mpgc.rpg122627.model.item.Consumable;
 import it.unicam.cs.mpgc.rpg122627.model.item.Item;
+import it.unicam.cs.mpgc.rpg122627.model.world.ChoiceOption;
 import it.unicam.cs.mpgc.rpg122627.persistence.ItemCatalog;
 import it.unicam.cs.mpgc.rpg122627.persistence.JsonSaveManager;
 import it.unicam.cs.mpgc.rpg122627.persistence.SaveManager;
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
 import javafx.scene.control.ChoiceDialog;
-import it.unicam.cs.mpgc.rpg122627.model.character.Enemy;
-
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 /**
  * Controller della GUI: gestisce gli input dell'utente, chiama la facciata
  * {@link Game} e aggiorna la {@link GameView}.
- * <p>
- * Il Controller è l'unica classe della GUI che conosce il modello: la View
- * resta "passiva" (solo componenti grafici). Questa separazione permette
- * di sostituire la GUI con un'altra tecnologia (web, mobile, CLI) senza
- * toccare la logica di gioco.
  */
 public class GameController {
 
@@ -55,9 +52,6 @@ public class GameController {
         view.getExitButton().setOnAction(e -> Platform.exit());
     }
 
-    /**
-     * Avvia una nuova partita (chiamato all'avvio dell'applicazione).
-     */
     public void start() {
         if (saveManager.hasSave()) {
             Alert alert = new Alert(Alert.AlertType.CONFIRMATION,
@@ -109,12 +103,17 @@ public class GameController {
     private void onPlayerAction(GameUpdate update) {
         for (String msg : update.getMessages()) view.appendToLog(msg);
         refreshUI();
-        // Se dopo l'azione dell'eroe siamo ancora in combattimento, tocca al nemico
         if (game.getStatus() == GameStatus.IN_COMBAT) {
             GameUpdate enemyUpdate = game.enemyTurn();
             for (String msg : enemyUpdate.getMessages()) view.appendToLog(msg);
             refreshUI();
         }
+    }
+
+    private void onChoiceSelected(ChoiceOption option) {
+        GameUpdate update = game.chooseAndAdvance(option);
+        view.appendToLog(update.getJoinedMessage());
+        enterCurrentRoomAndUpdate();
     }
 
     private void onUseItem() {
@@ -127,18 +126,13 @@ public class GameController {
             showInfo("Non hai oggetti consumabili.");
             return;
         }
-
-        // Costruisco le etichette "nome — descrizione" e le mostro al dialog.
-        // Poi, in base all'indice scelto, ricavo l'oggetto Consumable corrispondente.
         List<String> labels = consumables.stream()
                 .map(c -> c.getName() + " — " + c.getDescription())
                 .toList();
-
         ChoiceDialog<String> dialog = new ChoiceDialog<>(labels.getFirst(), labels);
         dialog.setTitle("Usa oggetto");
         dialog.setHeaderText("Scegli un oggetto da usare");
         dialog.setContentText("Oggetto:");
-
         Optional<String> choice = dialog.showAndWait();
         choice.ifPresent(label -> {
             int index = labels.indexOf(label);
@@ -176,15 +170,26 @@ public class GameController {
     private void refreshUI() {
         Hero h = game.getHero();
         view.setHeroInfo(formatHeroInfo(h));
-        view.setDungeonInfo("Stanza " + (game.getDungeon().getCurrentIndex() + 1)
-                + " di " + game.getDungeon().getSize());
+        view.setDungeonInfo("Nodo: " + game.getDungeon().getCurrentNode().getId()
+                + "   (" + game.getDungeon().getSize() + " nodi totali)");
         view.setRoomInfo(game.getCurrentRoom().getName(),
                 game.getCurrentRoom().getDescription());
 
         switch (game.getStatus()) {
             case EXPLORING -> {
                 view.setEnemyInfo("");
-                view.showExplorationButtons(!game.getDungeon().isAtLastRoom());
+                boolean canAdvance = !game.getDungeon().isAtTerminalNode();
+                view.showExplorationButtons(canAdvance);
+            }
+            case AWAITING_CHOICE -> {
+                view.setEnemyInfo("");
+                List<Button> buttons = new ArrayList<>();
+                for (ChoiceOption opt : game.getAvailableChoices()) {
+                    Button b = new Button(opt.getLabel() + "\n" + opt.getDescription());
+                    b.setOnAction(e -> onChoiceSelected(opt));
+                    buttons.add(b);
+                }
+                view.showChoiceButtons(buttons);
             }
             case IN_COMBAT -> {
                 view.setEnemyInfo(formatEnemyInfo(game.getCurrentCombat().getEnemy()));
@@ -203,24 +208,19 @@ public class GameController {
         }
     }
 
-    /**
-     * Formatta le statistiche dell'eroe su più righe, in modo leggibile per la GUI.
-     */
     private String formatHeroInfo(Hero h) {
         String weapon = (h.getEquippedWeapon() != null) ? h.getEquippedWeapon().getName() : "—";
         String armor = (h.getEquippedArmor() != null) ? h.getEquippedArmor().getName() : "—";
-        return "%s — Livello %d%nHP: %d/%d  |  ATK: %d  |  DEF: %d  |  XP: %d/100%nArma: %s  |  Armatura: %s"
+        return "%s — Livello %d%nHP: %d/%d  |  ATK: %d  |  DEF: %d  |  XP: %d/%d%nArma: %s  |  Armatura: %s"
                 .formatted(h.getName(), h.getLevel(),
                         h.getCurrentHp(), h.getMaxHp(),
                         h.getAttackDamage(), h.getDefense(),
-                        h.getExperience(),
+                        h.getExperience(), h.getXpPerLevel(),
                         weapon, armor);
     }
 
-    /**
-     * Formatta le statistiche del nemico in combattimento, mostrando anche ATK, DEF e XP.
-     */
-    private String formatEnemyInfo(Enemy e) {        return "Nemico: %s%nHP: %d/%d  |  ATK: %d  |  DEF: %d  |  Ricompensa: %d XP"
+    private String formatEnemyInfo(Enemy e) {
+        return "Nemico: %s%nHP: %d/%d  |  ATK: %d  |  DEF: %d  |  Ricompensa: %d XP"
                 .formatted(e.getName(),
                         e.getCurrentHp(), e.getMaxHp(),
                         e.getAttackDamage(), e.getDefense(),
