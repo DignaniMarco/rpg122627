@@ -34,6 +34,7 @@ public class GameView {
     // Bottoni esplorazione
     private final Button advanceButton = new Button("Avanza alla prossima stanza");
     private final Button inventoryButton = new Button("Inventario");
+    private final Button equipmentButton = new Button("Equipaggiamento");
     private final Button saveButton = new Button("Salva partita");
 
     // Bottoni combattimento
@@ -110,7 +111,7 @@ public class GameView {
         String buttonStyle = String.format(
                 "-fx-background-color: %s; -fx-text-fill: %s; -fx-padding: 8 16; -fx-cursor: hand;",
                 StylePresets.BG_PANEL, StylePresets.TEXT_PRIMARY);
-        for (Button b : new Button[]{advanceButton, inventoryButton, saveButton,
+        for (Button b : new Button[]{advanceButton, inventoryButton, equipmentButton, saveButton,
                 attackButton, defendButton, useItemButton, fleeButton,
                 newGameButton, exitButton}) {
             b.setStyle(buttonStyle);
@@ -152,9 +153,12 @@ public class GameView {
     public void showExplorationButtons(boolean canAdvance) {
         actionPanel.getChildren().clear();
         advanceButton.setDisable(!canAdvance);
-        HBox row = new HBox(StylePresets.SPACING, advanceButton, inventoryButton, saveButton);
-        row.setAlignment(Pos.CENTER);
-        actionPanel.getChildren().add(row);
+        // Due righe: azioni primarie + azioni di gestione
+        HBox row1 = new HBox(StylePresets.SPACING, advanceButton, inventoryButton);
+        HBox row2 = new HBox(StylePresets.SPACING, equipmentButton, saveButton);
+        row1.setAlignment(Pos.CENTER);
+        row2.setAlignment(Pos.CENTER);
+        actionPanel.getChildren().addAll(row1, row2);
     }
 
     public void showCombatButtons() {
@@ -196,6 +200,7 @@ public class GameView {
     // Getter dei bottoni (per il controller)
     public Button getAdvanceButton() { return advanceButton; }
     public Button getInventoryButton() { return inventoryButton; }
+    public Button getEquipmentButton() { return equipmentButton; }
     public Button getSaveButton() { return saveButton; }
     public Button getAttackButton() { return attackButton; }
     public Button getDefendButton() { return defendButton; }
