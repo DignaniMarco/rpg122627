@@ -5,21 +5,21 @@ import it.unicam.cs.mpgc.rpg122627.model.GameStatus;
 import it.unicam.cs.mpgc.rpg122627.model.GameUpdate;
 import it.unicam.cs.mpgc.rpg122627.model.character.Enemy;
 import it.unicam.cs.mpgc.rpg122627.model.character.Hero;
+import it.unicam.cs.mpgc.rpg122627.model.item.Armor;
 import it.unicam.cs.mpgc.rpg122627.model.item.Consumable;
 import it.unicam.cs.mpgc.rpg122627.model.item.Item;
+import it.unicam.cs.mpgc.rpg122627.model.item.Weapon;
 import it.unicam.cs.mpgc.rpg122627.model.world.ChoiceOption;
 import it.unicam.cs.mpgc.rpg122627.persistence.ItemCatalog;
 import it.unicam.cs.mpgc.rpg122627.persistence.JsonSaveManager;
 import it.unicam.cs.mpgc.rpg122627.persistence.SaveManager;
 import javafx.application.Platform;
+import javafx.geometry.Insets;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
-import javafx.scene.control.ChoiceDialog;
-import it.unicam.cs.mpgc.rpg122627.model.item.Armor;
-import it.unicam.cs.mpgc.rpg122627.model.item.Weapon;
-import javafx.geometry.Insets;
 import javafx.scene.control.ButtonBar.ButtonData;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.ChoiceDialog;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.DialogPane;
@@ -70,8 +70,8 @@ public class GameController {
                     "Trovata partita salvata. Vuoi caricarla?");
             alert.setHeaderText(null);
             alert.setTitle("Carica partita");
-            Optional<javafx.scene.control.ButtonType> result = alert.showAndWait();
-            if (result.isPresent() && result.get() == javafx.scene.control.ButtonType.OK) {
+            Optional<ButtonType> result = alert.showAndWait();
+            if (result.isPresent() && result.get() == ButtonType.OK) {
                 tryLoad();
                 return;
             }
@@ -82,7 +82,7 @@ public class GameController {
     private void startNewGame() {
         game = GameSetup.newGame("Marco l'Intrepido");
         view.clearLog();
-        view.appendToLog("Benvenuto in RPG122627!");
+        view.appendToLog("Benvenuto in RPG122627!", GameView.LogType.SUCCESS);
         enterCurrentRoomAndUpdate();
     }
 
@@ -90,7 +90,7 @@ public class GameController {
         try {
             game = Game.fromState(saveManager.load(), GameSetup.newDungeon(), itemCatalog);
             view.clearLog();
-            view.appendToLog("Partita caricata.");
+            view.appendToLog("Partita caricata.", GameView.LogType.SUCCESS);
             refreshUI();
         } catch (IOException ex) {
             showError("Impossibile caricare la partita: " + ex.getMessage());
@@ -108,23 +108,47 @@ public class GameController {
 
     private void enterCurrentRoomAndUpdate() {
         GameUpdate enter = game.enterCurrentRoom();
-        for (String msg : enter.getMessages()) view.appendToLog(msg);
+        GameView.LogType type = switch (game.getStatus()) {
+            case IN_COMBAT      -> GameView.LogType.COMBAT;
+            case AWAITING_CHOICE -> GameView.LogType.CHOICE;
+            default              -> inferTypeFromMessage(enter.getMessages());
+        };
+        for (String msg : enter.getMessages()) view.appendToLog(msg, type);
         refreshUI();
     }
 
+    /**
+     * Inferisce il tipo di log per gli eventi di stanza in EXPLORING
+     * (tesoro trovato, NPC che dona qualcosa, riposo in RestRoom).
+     * Guarda parole chiave nei messaggi: non è forma elegantissima ma
+     * evita di modificare il modello solo per il colore.
+     */
+    private GameView.LogType inferTypeFromMessage(List<String> messages) {
+        for (String m : messages) {
+            String lower = m.toLowerCase();
+            if (lower.contains("trova") || lower.contains("dona") || lower.contains("equipaggia")) {
+                return GameView.LogType.LOOT;
+            }
+            if (lower.contains("recupera") || lower.contains("riposa")) {
+                return GameView.LogType.SUCCESS;
+            }
+        }
+        return GameView.LogType.INFO;
+    }
+
     private void onPlayerAction(GameUpdate update) {
-        for (String msg : update.getMessages()) view.appendToLog(msg);
+        for (String msg : update.getMessages()) view.appendToLog(msg, GameView.LogType.COMBAT);
         refreshUI();
         if (game.getStatus() == GameStatus.IN_COMBAT) {
             GameUpdate enemyUpdate = game.enemyTurn();
-            for (String msg : enemyUpdate.getMessages()) view.appendToLog(msg);
+            for (String msg : enemyUpdate.getMessages()) view.appendToLog(msg, GameView.LogType.COMBAT);
             refreshUI();
         }
     }
 
     private void onChoiceSelected(ChoiceOption option) {
         GameUpdate update = game.chooseAndAdvance(option);
-        view.appendToLog(update.getJoinedMessage());
+        view.appendToLog(update.getJoinedMessage(), GameView.LogType.CHOICE);
         enterCurrentRoomAndUpdate();
     }
 
@@ -260,15 +284,18 @@ public class GameController {
             Armor chosenArmor = armorBox.getValue();
             if (chosenWeapon != null && chosenWeapon != currentWeapon) {
                 hero.equipWeapon(chosenWeapon);
-                view.appendToLog(hero.getName() + " equipaggia " + chosenWeapon.getName() + ".");
+                view.appendToLog(hero.getName() + " equipaggia " + chosenWeapon.getName() + ".",
+                        GameView.LogType.LOOT);
             }
             if (chosenArmor != null && chosenArmor != currentArmor) {
                 hero.equipArmor(chosenArmor);
-                view.appendToLog(hero.getName() + " equipaggia " + chosenArmor.getName() + ".");
+                view.appendToLog(hero.getName() + " equipaggia " + chosenArmor.getName() + ".",
+                        GameView.LogType.LOOT);
             }
             refreshUI();
         }
     }
+
     private void onSave() {
         try {
             saveManager.save(game.exportState());
@@ -287,6 +314,8 @@ public class GameController {
     private void refreshUI() {
         Hero h = game.getHero();
         view.setHeroInfo(formatHeroInfo(h));
+        view.updateHeroBars(h.getCurrentHp(), h.getMaxHp(),
+                h.getExperience(), h.getXpPerLevel());
         view.setDungeonInfo("Nodo: " + game.getDungeon().getCurrentNode().getId()
                 + "   (" + game.getDungeon().getSize() + " nodi totali)");
         view.setRoomInfo(game.getCurrentRoom().getName(),
@@ -294,12 +323,12 @@ public class GameController {
 
         switch (game.getStatus()) {
             case EXPLORING -> {
-                view.setEnemyInfo("");
+                view.setEnemyPanelVisible(false);
                 boolean canAdvance = !game.getDungeon().isAtTerminalNode();
                 view.showExplorationButtons(canAdvance);
             }
             case AWAITING_CHOICE -> {
-                view.setEnemyInfo("");
+                view.setEnemyPanelVisible(false);
                 List<Button> buttons = new ArrayList<>();
                 for (ChoiceOption opt : game.getAvailableChoices()) {
                     Button b = new Button(opt.getLabel() + "\n" + opt.getDescription());
@@ -309,17 +338,22 @@ public class GameController {
                 view.showChoiceButtons(buttons);
             }
             case IN_COMBAT -> {
-                view.setEnemyInfo(formatEnemyInfo(game.getCurrentCombat().getEnemy()));
+                Enemy en = game.getCurrentCombat().getEnemy();
+                view.setEnemyInfo(formatEnemyInfo(en));
+                view.updateEnemyBar(en.getCurrentHp(), en.getMaxHp());
+                view.setEnemyPanelVisible(true);
                 view.showCombatButtons();
             }
             case VICTORY -> {
-                view.setEnemyInfo("");
-                view.appendToLog(">>> VITTORIA! Hai completato il dungeon. <<<");
+                view.setEnemyPanelVisible(false);
+                view.appendToLog(">>> VITTORIA! Hai completato il dungeon. <<<",
+                        GameView.LogType.SUCCESS);
                 view.showEndButtons();
             }
             case DEFEAT -> {
-                view.setEnemyInfo("");
-                view.appendToLog(">>> SCONFITTA. L'eroe è caduto. <<<");
+                view.setEnemyPanelVisible(false);
+                view.appendToLog(">>> SCONFITTA. L'eroe è caduto. <<<",
+                        GameView.LogType.WARNING);
                 view.showEndButtons();
             }
         }
@@ -328,7 +362,7 @@ public class GameController {
     private String formatHeroInfo(Hero h) {
         String weapon = (h.getEquippedWeapon() != null) ? h.getEquippedWeapon().getName() : "—";
         String armor = (h.getEquippedArmor() != null) ? h.getEquippedArmor().getName() : "—";
-        return "%s — Livello %d%nHP: %d/%d  |  ATK: %d  |  DEF: %d  |  XP: %d/%d%nArma: %s  |  Armatura: %s"
+        return "🧙  %s — Livello %d%n❤  %d/%d   ⚔  %d   🛡  %d   ✨  %d/%d%n🗡  %s   👕  %s"
                 .formatted(h.getName(), h.getLevel(),
                         h.getCurrentHp(), h.getMaxHp(),
                         h.getAttackDamage(), h.getDefense(),
@@ -337,7 +371,7 @@ public class GameController {
     }
 
     private String formatEnemyInfo(Enemy e) {
-        return "Nemico: %s%nHP: %d/%d  |  ATK: %d  |  DEF: %d  |  Ricompensa: %d XP"
+        return "👹  %s%n❤  %d/%d   ⚔  %d   🛡  %d   ✨  %d XP"
                 .formatted(e.getName(),
                         e.getCurrentHp(), e.getMaxHp(),
                         e.getAttackDamage(), e.getDefense(),
