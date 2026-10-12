@@ -82,8 +82,31 @@ public class GameController {
     private void startNewGame() {
         game = GameSetup.newGame("Marco l'Intrepido");
         view.clearLog();
-        view.appendToLog("Benvenuto in RPG122627!", GameView.LogType.SUCCESS);
+        printWelcomeBanner();
         enterCurrentRoomAndUpdate();
+    }
+
+    /**
+     * Stampa nel log il banner di benvenuto con mini-tutorial per
+     * il nuovo giocatore. Chiamato solo da {@link #startNewGame()},
+     * non dal caricamento (chi carica conosce già il gioco).
+     */
+    private void printWelcomeBanner() {
+        view.appendToLog("══════════════════════════════════════", GameView.LogType.SUCCESS);
+        view.appendToLog("        BENVENUTO IN RPG122627        ", GameView.LogType.SUCCESS);
+        view.appendToLog("══════════════════════════════════════", GameView.LogType.SUCCESS);
+        view.appendToLog("Un dungeon antico si apre davanti a te. Da qualche parte");
+        view.appendToLog("in queste sale si cela un drago rosso. Non tutti i");
+        view.appendToLog("sentieri portano a lui, e nessuno è privo di pericoli.");
+        view.appendToLog(" ");
+        view.appendToLog("Come giocare:", GameView.LogType.CHOICE);
+        view.appendToLog("  ➡  Avanza        — passa alla prossima stanza");
+        view.appendToLog("  🎒  Inventario    — vedi cosa stai portando con te");
+        view.appendToLog("  🛡  Equipaggiamento — gestisci arma e armatura");
+        view.appendToLog("  💾  Salva partita  — salva per riprenderla dopo");
+        view.appendToLog(" ");
+        view.appendToLog("Buona fortuna, avventuriero.", GameView.LogType.SUCCESS);
+        view.appendToLog("──────────────────────────────────────");
     }
 
     private void tryLoad() {

@@ -1,0 +1,84 @@
+/* ==========================================================================
+   RPG122627 — Foglio di stile per la GUI JavaFX
+
+   Definisce stati visivi dinamici dei bottoni (hover, pressed, disabled)
+   che non sono gestibili puliti via inline-style. Il resto dei colori
+   di base viene impostato inline dalla classe GameView per mantenere
+   un unico punto di configurazione cromatica (StylePresets).
+   ========================================================================== */
+
+/* ===== Bottone base ===== */
+
+.button {
+    -fx-background-color: #2a2a2a;
+    -fx-text-fill: #e8e4d8;
+    -fx-font-size: 13px;
+    -fx-padding: 8 16;
+    -fx-cursor: hand;
+    -fx-background-radius: 4;
+    -fx-border-color: #4a4a4a;
+    -fx-border-width: 1;
+    -fx-border-radius: 4;
+    -fx-transition: all 0.15s ease-in-out;
+}
+
+/* ===== Hover: evidenziazione dorata ===== */
+
+.button:hover {
+    -fx-background-color: #3a3a3a;
+    -fx-border-color: #c9a961;    /* oro antico */
+    -fx-text-fill: #ffeab0;        /* oro chiaro */
+}
+
+/* ===== Pressed: feedback di click ===== */
+
+.button:pressed {
+    -fx-background-color: #1a1a1a;
+    -fx-border-color: #d4b67a;
+}
+
+/* ===== Disabled: grigio spento ===== */
+
+.button:disabled {
+    -fx-background-color: #1f1f1f;
+    -fx-text-fill: #666666;
+    -fx-border-color: #333333;
+    -fx-opacity: 0.6;
+    -fx-cursor: default;
+}
+
+/* ===== ScrollBar nel log diary ===== */
+
+.scroll-bar:vertical .thumb {
+    -fx-background-color: #4a4a4a;
+    -fx-background-radius: 4;
+}
+
+.scroll-bar:vertical .thumb:hover {
+    -fx-background-color: #6a6a6a;
+}
+
+.scroll-bar:vertical .track {
+    -fx-background-color: #1f1f1f;
+    -fx-background-radius: 4;
+}
+
+/* ===== Dialog box (equipaggiamento, usa oggetto) ===== */
+
+.dialog-pane {
+    -fx-background-color: #2a2a2a;
+}
+
+.dialog-pane .label {
+    -fx-text-fill: #e8e4d8;
+}
+
+.dialog-pane .header-panel {
+    -fx-background-color: #1f1f1f;
+}
+
+.dialog-pane .header-panel .label {
+    -fx-text-fill: #c9a961;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}

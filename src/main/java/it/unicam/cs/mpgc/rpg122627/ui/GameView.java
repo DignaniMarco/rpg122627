@@ -154,23 +154,27 @@ public class GameView {
         roomDescriptionLabel.setStyle(labelStyle);
         enemyInfoLabel.setStyle("-fx-text-fill: " + StylePresets.DANGER + ";");
 
-        String buttonStyle = String.format(
-                "-fx-background-color: %s; -fx-text-fill: %s; -fx-padding: 8 16; -fx-cursor: hand;",
-                StylePresets.BG_PANEL, StylePresets.TEXT_PRIMARY);
         for (Button b : new Button[]{advanceButton, inventoryButton, equipmentButton, saveButton,
                 attackButton, defendButton, useItemButton, fleeButton,
                 newGameButton, exitButton}) {
-            b.setStyle(buttonStyle);
             b.setMinWidth(220);
+
         }
     }
 
     // ========== API per il controller ==========
 
     public Scene buildScene() {
-        return new Scene(root, StylePresets.WINDOW_WIDTH, StylePresets.WINDOW_HEIGHT);
+        Scene scene = new Scene(root, StylePresets.WINDOW_WIDTH, StylePresets.WINDOW_HEIGHT);
+        java.net.URL cssUrl = getClass().getResource("/css/styles.css");
+        if (cssUrl == null) {
+            throw new IllegalStateException(
+                    "Stylesheet /css/styles.css not found on classpath. " +
+                            "Verify it exists in src/main/resources/css/");
+        }
+        scene.getStylesheets().add(cssUrl.toExternalForm());
+        return scene;
     }
-
     public void setHeroInfo(String text) {
         heroInfoLabel.setText(text);
     }
@@ -293,10 +297,6 @@ public class GameView {
         VBox box = new VBox(StylePresets.SPACING);
         box.setAlignment(Pos.CENTER);
         for (javafx.scene.control.Button b : optionButtons) {
-            String buttonStyle = String.format(
-                    "-fx-background-color: %s; -fx-text-fill: %s; -fx-padding: 8 16; -fx-cursor: hand;",
-                    StylePresets.BG_PANEL, StylePresets.TEXT_PRIMARY);
-            b.setStyle(buttonStyle);
             b.setMinWidth(400);
             b.setWrapText(true);
             box.getChildren().add(b);
