@@ -165,11 +165,13 @@ public final class GameSetup {
         trivioRoom.addOption(new ChoiceOption(
                 "Vai a sinistra",
                 "Il passaggio puzza di sangue: ti aspettano combattimenti pesanti ma troverai scorte.",
-                d1));
+                d1,
+                "door_danger"));
         trivioRoom.addOption(new ChoiceOption(
                 "Vai a destra",
                 "Senti una voce lontana: potresti incontrare qualcuno, ma la strada è più lunga.",
-                d2));
+                d2,
+                "door_mystery"));
         c.addSuccessor(d1);
         c.addSuccessor(d2);
 

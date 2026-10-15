@@ -353,13 +353,7 @@ public class GameController {
             }
             case AWAITING_CHOICE -> {
                 view.setEnemyPanelVisible(false);
-                List<Button> buttons = new ArrayList<>();
-                for (ChoiceOption opt : game.getAvailableChoices()) {
-                    Button b = new Button(opt.getLabel() + "\n" + opt.getDescription());
-                    b.setOnAction(e -> onChoiceSelected(opt));
-                    buttons.add(b);
-                }
-                view.showChoiceButtons(buttons);
+                view.showChoiceCards(game.getAvailableChoices(), this::onChoiceSelected);
             }
             case IN_COMBAT -> {
                 Enemy en = game.getCurrentCombat().getEnemy();

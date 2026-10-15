@@ -297,16 +297,77 @@ public class GameView {
         actionPanel.getChildren().add(row);
     }
 
-    public void showChoiceButtons(List<Button> optionButtons) {
+    /**
+     * Mostra le opzioni di una {@link it.unicam.cs.mpgc.rpg122627.model.world.ChoiceRoom}
+     * come card affiancate. Ogni card contiene l'icona (porta) dell'opzione, l'etichetta
+     * breve e la descrizione; tutto il contenuto è cliccabile come un singolo bottone.
+     * <p>
+     * Il metodo prende direttamente le {@link it.unicam.cs.mpgc.rpg122627.model.world.ChoiceOption}
+     * (non i bottoni già costruiti) perché la View deve avere accesso allo
+     * {@link SpriteManager} per risolvere l'iconName in un'immagine.
+     *
+     * @param options opzioni disponibili
+     * @param onSelect callback invocato con l'opzione scelta
+     */
+    public void showChoiceCards(
+            List<it.unicam.cs.mpgc.rpg122627.model.world.ChoiceOption> options,
+            java.util.function.Consumer<it.unicam.cs.mpgc.rpg122627.model.world.ChoiceOption> onSelect) {
         actionPanel.getChildren().clear();
-        VBox box = new VBox(StylePresets.SPACING);
-        box.setAlignment(Pos.CENTER);
-        for (Button b : optionButtons) {
-            b.setMinWidth(400);
-            b.setWrapText(true);
-            box.getChildren().add(b);
+
+        HBox row = new HBox(StylePresets.SPACING * 2);
+        row.setFillHeight(true);
+        row.setAlignment(Pos.CENTER);
+
+        for (var opt : options) {
+            row.getChildren().add(buildChoiceCard(opt, onSelect));
         }
-        actionPanel.getChildren().add(box);
+        actionPanel.getChildren().add(row);
+    }
+
+    private Button buildChoiceCard(
+            it.unicam.cs.mpgc.rpg122627.model.world.ChoiceOption opt,
+            java.util.function.Consumer<it.unicam.cs.mpgc.rpg122627.model.world.ChoiceOption> onSelect) {
+
+        // Immagine della porta (se registrata)
+        ImageView iconView = new ImageView();
+        Image icon = spriteManager.getDoor(opt.getIconName());
+        if (icon != null) {
+            iconView.setImage(icon);
+            iconView.setFitWidth(150);
+            iconView.setFitHeight(150);
+            iconView.setPreserveRatio(true);
+            iconView.setSmooth(true);
+        }
+
+        // Testo: titolo in grassetto, descrizione sotto
+        Label title = new Label(opt.getLabel());
+        title.setFont(Font.font("SansSerif", FontWeight.BOLD, 14));
+        title.setStyle("-fx-text-fill: " + StylePresets.TEXT_PRIMARY + ";");
+
+        Label desc = new Label(opt.getDescription());
+        desc.setFont(Font.font("SansSerif", 12));
+        desc.setStyle("-fx-text-fill: " + StylePresets.TEXT_SECONDARY + ";");
+        desc.setWrapText(true);
+        desc.setMaxWidth(220);
+
+        VBox cardContent = new VBox(6);
+        cardContent.setAlignment(Pos.CENTER);
+        if (icon != null) {
+            cardContent.getChildren().add(iconView);
+        }
+        cardContent.getChildren().addAll(title, desc);
+
+        Button card = new Button();
+        card.setGraphic(cardContent);
+        card.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
+        card.setPrefWidth(300);
+        card.setMinWidth(300);
+        card.setMaxWidth(300);
+        card.setPrefHeight(400);
+        card.setMinHeight(400);
+        card.setMaxHeight(400);
+        card.setOnAction(e -> onSelect.accept(opt));
+        return card;
     }
 
     // Getter dei bottoni

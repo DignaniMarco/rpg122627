@@ -29,13 +29,15 @@ public class SpriteManager {
 
     private static final int CHARACTER_SIZE = 128;
     private static final int ITEM_SIZE = 48;
+    private static final int DOOR_SIZE = 150;
 
     private final Map<String, Image> characterSprites = new HashMap<>();
     private final Map<String, Image> itemSprites = new HashMap<>();
-
+    private final Map<String, Image> doorSprites = new HashMap<>();
     public SpriteManager() {
         loadCharacterSprites();
         loadItemSprites();
+        loadDoorSprites();   // ← aggiungi questa riga
     }
 
     private void loadCharacterSprites() {
@@ -67,6 +69,18 @@ public class SpriteManager {
         registerItem("Pozione Maggiore", "potion_large.png");
         registerItem("Pugnale Arrugginito", "dagger.png");
         registerItem("Spada d'Argento", "silver_sword.png");
+    }
+
+    private void loadDoorSprites() {
+        registerDoor("door_danger", "door_danger.png");
+        registerDoor("door_mystery", "door_mystery.png");
+    }
+
+    private void registerDoor(String name, String fileName) {
+        Image img = loadImage("/sprites/doors/" + fileName, DOOR_SIZE);
+        if (img != null) {
+            doorSprites.put(name, img);
+        }
     }
 
     private void registerCharacter(String name, String fileName) {
@@ -113,5 +127,14 @@ public class SpriteManager {
      */
     public Image getItem(String itemName) {
         return itemSprites.get(itemName);
+    }
+
+    /**
+     * @param doorName nome logico dell'icona porta (es. "door_danger")
+     * @return l'Image corrispondente, o null se non registrata
+     */
+    public Image getDoor(String doorName) {
+        if (doorName == null) return null;
+        return doorSprites.get(doorName);
     }
 }
