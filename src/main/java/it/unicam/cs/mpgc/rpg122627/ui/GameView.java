@@ -4,13 +4,17 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
-import java.util.List;
-import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
+
+import java.util.List;
+import java.util.Objects;
 
 /**
  * Vista principale della GUI: definisce il layout e i componenti grafici,
@@ -21,31 +25,22 @@ import javafx.scene.text.TextFlow;
  */
 public class GameView {
 
-    /**
-     * Tipi di messaggio per il log, mappati a colori diversi.
-     * Il controller sceglie il tipo in base al contesto; la View decide
-     * il colore corrispondente (separazione MVC).
-     */
     public enum LogType {
-        /** Informazione neutra. */
-        INFO,
-        /** Evento di combattimento (attacchi, danni). */
-        COMBAT,
-        /** Oggetto trovato o ricompensa. */
-        LOOT,
-        /** Scelta disponibile per il giocatore. */
-        CHOICE,
-        /** Evento positivo importante (level up, vittoria). */
-        SUCCESS,
-        /** Evento critico (sconfitta, errore). */
-        WARNING
+        INFO, COMBAT, LOOT, CHOICE, SUCCESS, WARNING
     }
+
+    private static final double HERO_SPRITE_SIZE = 96;
+    private static final double ENEMY_SPRITE_SIZE = 160;
+
+    // Sprite manager (carica le immagini una sola volta all'avvio)
+    private final SpriteManager spriteManager = new SpriteManager();
 
     // Pannello superiore - info eroe
     private final Label heroInfoLabel = new Label();
     private final Label dungeonInfoLabel = new Label();
     private final StatusBar heroHpBar = new StatusBar("HP", StatusBar.Mode.HEALTH);
     private final StatusBar heroXpBar = new StatusBar("XP", StatusBar.Mode.PROGRESS);
+    private final ImageView heroSprite = new ImageView();
 
     // Pannello centrale - stanza + log
     private final Label roomNameLabel = new Label();
@@ -57,7 +52,8 @@ public class GameView {
     private final VBox actionPanel = new VBox(StylePresets.SPACING);
     private final Label enemyInfoLabel = new Label();
     private final StatusBar enemyHpBar = new StatusBar("HP Nemico", StatusBar.Mode.HEALTH);
-    private final VBox enemyPanel = new VBox(4);
+    private final ImageView enemySprite = new ImageView();
+    private final HBox enemyPanel = new HBox(StylePresets.SPACING);
 
     // Bottoni esplorazione
     private final Button advanceButton = new Button("➡  Avanza");
@@ -65,13 +61,16 @@ public class GameView {
     private final Button equipmentButton = new Button("🛡  Equipaggiamento");
     private final Button saveButton = new Button("💾  Salva partita");
 
+    // Bottoni combattimento
     private final Button attackButton = new Button("⚔  Attacca");
     private final Button defendButton = new Button("🛡  Difenditi");
     private final Button useItemButton = new Button("🧪  Usa oggetto");
     private final Button fleeButton = new Button("🏃  Fuggi");
 
+    // Bottoni fine partita
     private final Button newGameButton = new Button("🔄  Nuova partita");
     private final Button exitButton = new Button("❌  Esci");
+
     private final BorderPane root = new BorderPane();
 
     public GameView() {
@@ -88,18 +87,24 @@ public class GameView {
         root.setBottom(buildBottomPanel());
     }
 
-    private VBox buildTopPanel() {
-        VBox box = new VBox(5);
-        box.setPadding(new Insets(0, 0, StylePresets.PADDING, 0));
+    private HBox buildTopPanel() {
+        // Sprite dell'eroe a sinistra, info testuali e barre a destra
+        heroSprite.setFitWidth(HERO_SPRITE_SIZE);
+        heroSprite.setFitHeight(HERO_SPRITE_SIZE);
+        heroSprite.setPreserveRatio(true);
+        heroSprite.setSmooth(true);
+
         heroInfoLabel.setFont(Font.font("Monospaced", FontWeight.BOLD, 14));
         dungeonInfoLabel.setFont(Font.font("Monospaced", 12));
         heroInfoLabel.setWrapText(true);
         dungeonInfoLabel.setWrapText(true);
-        // Riga 1: info eroe (nome, livello, stats testuali)
-        // Riga 2: barra HP
-        // Riga 3: barra XP
-        // Riga 4: info dungeon
-        box.getChildren().addAll(heroInfoLabel, heroHpBar, heroXpBar, dungeonInfoLabel);
+
+        VBox infoBox = new VBox(5, heroInfoLabel, heroHpBar, heroXpBar, dungeonInfoLabel);
+        HBox.setHgrow(infoBox, Priority.ALWAYS);
+
+        HBox box = new HBox(StylePresets.SPACING, heroSprite, infoBox);
+        box.setPadding(new Insets(0, 0, StylePresets.PADDING, 0));
+        box.setAlignment(Pos.CENTER_LEFT);
         return box;
     }
 
@@ -123,6 +128,7 @@ public class GameView {
         Label diaryLabel = new Label("📜 Diario");
         diaryLabel.setFont(Font.font("SansSerif", FontWeight.BOLD, 13));
         diaryLabel.setStyle("-fx-text-fill: " + StylePresets.TEXT_SECONDARY + ";");
+
         box.getChildren().addAll(roomNameLabel, roomDescriptionLabel,
                 diaryLabel, logScroll);
         return box;
@@ -136,9 +142,18 @@ public class GameView {
         enemyInfoLabel.setFont(Font.font("Monospaced", FontWeight.BOLD, 13));
         enemyInfoLabel.setWrapText(true);
 
-        // Pannello nemico: nome/stat + barra HP, mostrato solo in combat
+        enemySprite.setFitWidth(ENEMY_SPRITE_SIZE);
+        enemySprite.setFitHeight(ENEMY_SPRITE_SIZE);
+        enemySprite.setPreserveRatio(true);
+        enemySprite.setSmooth(true);
+
+        // Info + barra a sinistra, sprite nemico a destra
+        VBox enemyInfoBox = new VBox(4, enemyInfoLabel, enemyHpBar);
+        enemyInfoBox.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(enemyInfoBox, Priority.ALWAYS);
+
         enemyPanel.setAlignment(Pos.CENTER);
-        enemyPanel.getChildren().addAll(enemyInfoLabel, enemyHpBar);
+        enemyPanel.getChildren().addAll(enemyInfoBox, enemySprite);
         enemyPanel.setVisible(false);
         enemyPanel.setManaged(false);
 
@@ -158,7 +173,6 @@ public class GameView {
                 attackButton, defendButton, useItemButton, fleeButton,
                 newGameButton, exitButton}) {
             b.setMinWidth(220);
-
         }
     }
 
@@ -166,67 +180,62 @@ public class GameView {
 
     public Scene buildScene() {
         Scene scene = new Scene(root, StylePresets.WINDOW_WIDTH, StylePresets.WINDOW_HEIGHT);
-        java.net.URL cssUrl = getClass().getResource("/css/styles.css");
-        if (cssUrl == null) {
-            throw new IllegalStateException(
-                    "Stylesheet /css/styles.css not found on classpath. " +
-                            "Verify it exists in src/main/resources/css/");
-        }
-        scene.getStylesheets().add(cssUrl.toExternalForm());
+        scene.getStylesheets().add(
+                Objects.requireNonNull(
+                        getClass().getResource("/css/styles.css"),
+                        "Stylesheet /css/styles.css not found on classpath"
+                ).toExternalForm());
         return scene;
     }
-    public void setHeroInfo(String text) {
-        heroInfoLabel.setText(text);
-    }
 
-    public void setDungeonInfo(String text) {
-        dungeonInfoLabel.setText(text);
-    }
-
+    public void setHeroInfo(String text)       { heroInfoLabel.setText(text); }
+    public void setDungeonInfo(String text)    { dungeonInfoLabel.setText(text); }
     public void setRoomInfo(String name, String description) {
         roomNameLabel.setText(name);
         roomDescriptionLabel.setText(description);
     }
+    public void setEnemyInfo(String text)      { enemyInfoLabel.setText(text); }
 
-    public void setEnemyInfo(String text) {
-        enemyInfoLabel.setText(text);
-    }
-
-    /**
-     * Aggiorna le barre HP e XP dell'eroe.
-     */
     public void updateHeroBars(int currentHp, int maxHp, int currentXp, int xpPerLevel) {
         heroHpBar.update(currentHp, maxHp);
         heroXpBar.update(currentXp, xpPerLevel);
     }
 
-    /**
-     * Aggiorna la barra HP del nemico. Da chiamare solo durante il combat;
-     * la visibilità del pannello si controlla con {@link #setEnemyPanelVisible(boolean)}.
-     */
     public void updateEnemyBar(int currentHp, int maxHp) {
         enemyHpBar.update(currentHp, maxHp);
     }
 
-    /**
-     * Mostra o nasconde il pannello nemico (nome + barra HP).
-     * Il nemico esiste solo durante il combat.
-     */
     public void setEnemyPanelVisible(boolean visible) {
         enemyPanel.setVisible(visible);
         enemyPanel.setManaged(visible);
     }
 
     /**
-     * Aggiunge un messaggio al log con stile INFO (default).
+     * Aggiorna lo sprite dell'eroe dato il suo nome logico.
+     * Se lo sprite non è registrato nel {@link SpriteManager}, nasconde l'ImageView.
      */
+    public void setHeroSpriteByName(String name) {
+        Image img = spriteManager.getCharacter(name);
+        heroSprite.setImage(img);
+        heroSprite.setVisible(img != null);
+        heroSprite.setManaged(img != null);
+    }
+
+    /**
+     * Aggiorna lo sprite del nemico dato il suo nome logico.
+     * Se lo sprite non è registrato, nasconde l'ImageView.
+     */
+    public void setEnemySpriteByName(String name) {
+        Image img = spriteManager.getCharacter(name);
+        enemySprite.setImage(img);
+        enemySprite.setVisible(img != null);
+        enemySprite.setManaged(img != null);
+    }
+
     public void appendToLog(String message) {
         appendToLog(message, LogType.INFO);
     }
 
-    /**
-     * Aggiunge un messaggio al log con il colore corrispondente al tipo.
-     */
     public void appendToLog(String message, LogType type) {
         String prefixed = iconForType(type) + " " + message + "\n";
         Text text = new Text(prefixed);
@@ -234,6 +243,21 @@ public class GameView {
         text.setFont(Font.font("Monospaced", 12));
         logFlow.getChildren().add(text);
         javafx.application.Platform.runLater(() -> logScroll.setVvalue(1.0));
+    }
+
+    public void clearLog() {
+        logFlow.getChildren().clear();
+    }
+
+    private Color colorForType(LogType type) {
+        return switch (type) {
+            case INFO    -> Color.web("#E0E0E0");
+            case COMBAT  -> Color.web("#EF5350");
+            case LOOT    -> Color.web("#66BB6A");
+            case CHOICE  -> Color.web("#FFCA28");
+            case SUCCESS -> Color.web("#42A5F5");
+            case WARNING -> Color.web("#FF7043");
+        };
     }
 
     private String iconForType(LogType type) {
@@ -244,21 +268,6 @@ public class GameView {
             case CHOICE  -> "🔀";
             case SUCCESS -> "✨";
             case WARNING -> "💀";
-        };
-    }
-
-    public void clearLog() {
-        logFlow.getChildren().clear();
-    }
-
-    private Color colorForType(LogType type) {
-        return switch (type) {
-            case INFO    -> Color.web("#E0E0E0");  // grigio chiaro
-            case COMBAT  -> Color.web("#EF5350");  // rosso corallo
-            case LOOT    -> Color.web("#66BB6A");  // verde
-            case CHOICE  -> Color.web("#FFCA28");  // giallo ambra
-            case SUCCESS -> Color.web("#42A5F5");  // azzurro brillante
-            case WARNING -> Color.web("#FF7043");  // arancio scuro
         };
     }
 
@@ -288,15 +297,11 @@ public class GameView {
         actionPanel.getChildren().add(row);
     }
 
-    /**
-     * Mostra una scelta tra più opzioni (per le ChoiceRoom).
-     * Il controller fornisce le etichette; i click vengono gestiti via callback.
-     */
-    public void showChoiceButtons(List<javafx.scene.control.Button> optionButtons) {
+    public void showChoiceButtons(List<Button> optionButtons) {
         actionPanel.getChildren().clear();
         VBox box = new VBox(StylePresets.SPACING);
         box.setAlignment(Pos.CENTER);
-        for (javafx.scene.control.Button b : optionButtons) {
+        for (Button b : optionButtons) {
             b.setMinWidth(400);
             b.setWrapText(true);
             box.getChildren().add(b);
@@ -304,15 +309,15 @@ public class GameView {
         actionPanel.getChildren().add(box);
     }
 
-    // Getter dei bottoni (per il controller)
-    public Button getAdvanceButton() { return advanceButton; }
-    public Button getInventoryButton() { return inventoryButton; }
-    public Button getEquipmentButton() { return equipmentButton; }
-    public Button getSaveButton() { return saveButton; }
-    public Button getAttackButton() { return attackButton; }
-    public Button getDefendButton() { return defendButton; }
-    public Button getUseItemButton() { return useItemButton; }
-    public Button getFleeButton() { return fleeButton; }
-    public Button getNewGameButton() { return newGameButton; }
-    public Button getExitButton() { return exitButton; }
+    // Getter dei bottoni
+    public Button getAdvanceButton()    { return advanceButton; }
+    public Button getInventoryButton()  { return inventoryButton; }
+    public Button getEquipmentButton()  { return equipmentButton; }
+    public Button getSaveButton()       { return saveButton; }
+    public Button getAttackButton()     { return attackButton; }
+    public Button getDefendButton()     { return defendButton; }
+    public Button getUseItemButton()    { return useItemButton; }
+    public Button getFleeButton()       { return fleeButton; }
+    public Button getNewGameButton()    { return newGameButton; }
+    public Button getExitButton()       { return exitButton; }
 }

@@ -339,6 +339,7 @@ public class GameController {
         view.setHeroInfo(formatHeroInfo(h));
         view.updateHeroBars(h.getCurrentHp(), h.getMaxHp(),
                 h.getExperience(), h.getXpPerLevel());
+        view.setHeroSpriteByName(h.getName());
         view.setDungeonInfo("Nodo: " + game.getDungeon().getCurrentNode().getId()
                 + "   (" + game.getDungeon().getSize() + " nodi totali)");
         view.setRoomInfo(game.getCurrentRoom().getName(),
@@ -364,6 +365,7 @@ public class GameController {
                 Enemy en = game.getCurrentCombat().getEnemy();
                 view.setEnemyInfo(formatEnemyInfo(en));
                 view.updateEnemyBar(en.getCurrentHp(), en.getMaxHp());
+                view.setEnemySpriteByName(en.getName());
                 view.setEnemyPanelVisible(true);
                 view.showCombatButtons();
             }
