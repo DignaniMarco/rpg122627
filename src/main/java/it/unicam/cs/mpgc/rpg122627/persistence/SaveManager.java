@@ -31,4 +31,13 @@ public interface SaveManager {
      * @return true se esiste un salvataggio da cui caricare
      */
     boolean hasSave();
+
+    /**
+     * Cancella il file di salvataggio se esiste. Chiamato automaticamente
+     * al termine di una partita (vittoria o sconfitta): una partita
+     * conclusa non ha senso essere ricaricata, e lasciando il file su
+     * disco si costringerebbe il giocatore a vedere il dialog
+     * "Carica partita?" ad ogni avvio successivo.
+     */
+    void delete();
 }

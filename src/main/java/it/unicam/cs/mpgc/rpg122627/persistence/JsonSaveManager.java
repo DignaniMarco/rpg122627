@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import java.io.File;
 import java.io.IOException;
 import java.util.Objects;
+import java.nio.file.Files;
 
 /**
  * Implementazione di {@link SaveManager} che persiste lo stato della
@@ -62,5 +63,15 @@ public class JsonSaveManager implements SaveManager {
      */
     public File getSaveFile() {
         return saveFile;
+    }
+
+    @Override
+    public void delete() {
+        try {
+            Files.deleteIfExists(saveFile.toPath());
+        } catch (IOException e) {
+            System.err.println("[JsonSaveManager] impossibile cancellare "
+                    + saveFile.getAbsolutePath() + ": " + e.getMessage());
+        }
     }
 }

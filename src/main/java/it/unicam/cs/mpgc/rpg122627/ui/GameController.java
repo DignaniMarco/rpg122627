@@ -367,12 +367,14 @@ public class GameController {
                 view.setEnemyPanelVisible(false);
                 view.appendToLog(">>> VITTORIA! Hai completato il dungeon. <<<",
                         GameView.LogType.SUCCESS);
+                saveManager.delete();
                 view.showEndButtons();
             }
             case DEFEAT -> {
                 view.setEnemyPanelVisible(false);
                 view.appendToLog(">>> SCONFITTA. L'eroe è caduto. <<<",
                         GameView.LogType.WARNING);
+                saveManager.delete();
                 view.showEndButtons();
             }
         }
