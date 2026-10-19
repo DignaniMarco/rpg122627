@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import javafx.stage.Modality;
 
 /**
  * Controller della GUI: gestisce gli input dell'utente, chiama la facciata
@@ -70,6 +71,7 @@ public class GameController {
                     "Trovata partita salvata. Vuoi caricarla?");
             alert.setHeaderText(null);
             alert.setTitle("Carica partita");
+            attachToView(alert);
             Optional<ButtonType> result = alert.showAndWait();
             if (result.isPresent() && result.get() == ButtonType.OK) {
                 tryLoad();
@@ -192,6 +194,7 @@ public class GameController {
         dialog.setTitle("Usa oggetto");
         dialog.setHeaderText("Scegli un oggetto da usare");
         dialog.setContentText("Oggetto:");
+        attachToView(dialog);
         Optional<String> choice = dialog.showAndWait();
         choice.ifPresent(label -> {
             int index = labels.indexOf(label);
@@ -301,6 +304,7 @@ public class GameController {
 
         pane.setContent(grid);
 
+        attachToView(dialog);
         Optional<ButtonType> result = dialog.showAndWait();
         if (result.isPresent() && result.get() == applyType) {
             Weapon chosenWeapon = weaponBox.getValue();
@@ -344,6 +348,7 @@ public class GameController {
                 + "   (" + game.getDungeon().getSize() + " nodi totali)");
         view.setRoomInfo(game.getCurrentRoom().getName(),
                 game.getCurrentRoom().getDescription());
+        view.setRoomBackgroundByName(game.getCurrentRoom().getBackgroundName());
 
         switch (game.getStatus()) {
             case EXPLORING -> {
@@ -402,12 +407,23 @@ public class GameController {
     private void showInfo(String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION, message);
         alert.setHeaderText(null);
+        attachToView(alert);
         alert.showAndWait();
     }
-
     private void showError(String message) {
         Alert alert = new Alert(Alert.AlertType.ERROR, message);
         alert.setHeaderText(null);
+        attachToView(alert);
         alert.showAndWait();
+    }
+
+    /**
+     * Ancora un dialog alla finestra della view e lo rende WINDOW_MODAL,
+     * così su macOS fullscreen la modale compare sopra il gioco invece
+     * di aprirsi in uno space separato.
+     */
+    private void attachToView(Dialog<?> dialog) {
+        dialog.initOwner(view.getWindow());
+        dialog.initModality(Modality.WINDOW_MODAL);
     }
 }

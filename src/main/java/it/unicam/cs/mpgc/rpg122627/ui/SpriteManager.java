@@ -30,14 +30,17 @@ public class SpriteManager {
     private static final int CHARACTER_SIZE = 128;
     private static final int ITEM_SIZE = 48;
     private static final int DOOR_SIZE = 150;
+    private static final int BACKGROUND_WIDTH = 500;
 
     private final Map<String, Image> characterSprites = new HashMap<>();
     private final Map<String, Image> itemSprites = new HashMap<>();
     private final Map<String, Image> doorSprites = new HashMap<>();
+    private final Map<String, Image> backgroundSprites = new HashMap<>();
     public SpriteManager() {
         loadCharacterSprites();
         loadItemSprites();
-        loadDoorSprites();   // ← aggiungi questa riga
+        loadDoorSprites();
+        loadBackgroundSprites();
     }
 
     private void loadCharacterSprites() {
@@ -136,5 +139,35 @@ public class SpriteManager {
     public Image getDoor(String doorName) {
         if (doorName == null) return null;
         return doorSprites.get(doorName);
+    }
+
+    private void loadBackgroundSprites() {
+        registerBackground("room_empty",    "room_empty.jpg");
+        registerBackground("room_choice",   "room_choice.jpg");
+        registerBackground("room_combat",   "room_combat.jpg");
+        registerBackground("room_treasure", "room_treasure.jpg");
+        registerBackground("room_npc",      "room_npc.jpg");
+        registerBackground("room_rest",     "room_rest.jpg");
+        registerBackground("room_boss",     "room_boss.jpg");
+    }
+
+    private void registerBackground(String name, String fileName) {
+        InputStream in = getClass().getResourceAsStream("/sprites/backgrounds/" + fileName);
+        if (in == null) {
+            System.err.println("[SpriteManager] sfondo non trovato: " + fileName);
+            return;
+        }
+        // Larghezza target fissa, altezza automatica (preserveRatio)
+        Image img = new Image(in, BACKGROUND_WIDTH, 0, true, true);
+        backgroundSprites.put(name, img);
+    }
+
+    /**
+     * @param backgroundName nome logico dello sfondo (es. "room_combat")
+     * @return l'Image corrispondente, o null se non registrata
+     */
+    public Image getBackground(String backgroundName) {
+        if (backgroundName == null) return null;
+        return backgroundSprites.get(backgroundName);
     }
 }

@@ -44,4 +44,7 @@ public class CombatRoom implements Room {
                 hero.getName(), name, enemy.getName());
         return RoomEvent.combat(message, enemy);
     }
+
+    @Override
+    public String getBackgroundName() { return "room_combat"; }
 }

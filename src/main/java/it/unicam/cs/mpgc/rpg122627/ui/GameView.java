@@ -45,6 +45,7 @@ public class GameView {
     // Pannello centrale - stanza + log
     private final Label roomNameLabel = new Label();
     private final Label roomDescriptionLabel = new Label();
+    private final ImageView roomBackground = new ImageView();
     private final TextFlow logFlow = new TextFlow();
     private final ScrollPane logScroll = new ScrollPane(logFlow);
 
@@ -114,6 +115,11 @@ public class GameView {
         roomDescriptionLabel.setFont(Font.font("SansSerif", 13));
         roomDescriptionLabel.setWrapText(true);
 
+        // Banner sfondo stanza
+        roomBackground.setFitWidth(500);
+        roomBackground.setPreserveRatio(true);
+        roomBackground.setSmooth(true);
+
         logFlow.setStyle("-fx-background-color: " + StylePresets.BG_PANEL
                 + "; -fx-padding: 8;");
         logFlow.setPrefWidth(600);
@@ -129,8 +135,12 @@ public class GameView {
         diaryLabel.setFont(Font.font("SansSerif", FontWeight.BOLD, 13));
         diaryLabel.setStyle("-fx-text-fill: " + StylePresets.TEXT_SECONDARY + ";");
 
+        // Centro il banner orizzontalmente
+        HBox backgroundRow = new HBox(roomBackground);
+        backgroundRow.setAlignment(Pos.CENTER);
+
         box.getChildren().addAll(roomNameLabel, roomDescriptionLabel,
-                diaryLabel, logScroll);
+                backgroundRow, diaryLabel, logScroll);
         return box;
     }
 
@@ -177,6 +187,15 @@ public class GameView {
     }
 
     // ========== API per il controller ==========
+
+    /**
+     * @return la Window che ospita questa view, utile per ancorare
+     *         dialog modali ({@code initOwner}) ed evitare che su macOS
+     *         fullscreen si aprano in uno "space" separato.
+     */
+    public javafx.stage.Window getWindow() {
+        return root.getScene().getWindow();
+    }
 
     public Scene buildScene() {
         Scene scene = new Scene(root, StylePresets.WINDOW_WIDTH, StylePresets.WINDOW_HEIGHT);
@@ -230,6 +249,19 @@ public class GameView {
         enemySprite.setImage(img);
         enemySprite.setVisible(img != null);
         enemySprite.setManaged(img != null);
+    }
+
+    /**
+     * Aggiorna lo sfondo della stanza dato il suo nome logico.
+     * Se lo sfondo non è registrato nel {@link SpriteManager}, nasconde l'ImageView.
+     *
+     * @param name nome logico dello sfondo (es. "room_combat"), o {@code null} per nascondere
+     */
+    public void setRoomBackgroundByName(String name) {
+        Image img = spriteManager.getBackground(name);
+        roomBackground.setImage(img);
+        roomBackground.setVisible(img != null);
+        roomBackground.setManaged(img != null);
     }
 
     public void appendToLog(String message) {

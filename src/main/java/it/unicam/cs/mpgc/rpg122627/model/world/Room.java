@@ -36,4 +36,13 @@ public interface Room {
      * @return evento che descrive l'esito dell'ingresso
      */
     RoomEvent onEnter(Hero hero);
+
+    /**
+     * @return nome logico dello sfondo associato a questo tipo di stanza
+     *         (es. "room_combat"), risolto dal {@code SpriteManager}.
+     *         Default {@code null}: nessuno sfondo (la View nasconderà il banner).
+     */
+    default String getBackgroundName() {
+        return null;
+    }
 }

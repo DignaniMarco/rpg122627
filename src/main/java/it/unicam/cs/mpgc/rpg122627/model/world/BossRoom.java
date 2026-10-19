@@ -44,4 +44,7 @@ public class BossRoom implements Room {
                 hero.getName(), name, boss.getName());
         return RoomEvent.boss(message, boss);
     }
+
+    @Override
+    public String getBackgroundName() { return "room_boss"; }
 }

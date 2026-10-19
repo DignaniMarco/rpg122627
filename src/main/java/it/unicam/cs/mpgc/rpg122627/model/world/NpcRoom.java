@@ -120,4 +120,7 @@ public class NpcRoom implements Room {
         }
         return RoomEvent.item(message, possibleDrop);
     }
+
+    @Override
+    public String getBackgroundName() { return "room_npc"; }
 }

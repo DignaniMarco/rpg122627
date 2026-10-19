@@ -30,4 +30,7 @@ public class EmptyRoom implements Room {
     public RoomEvent onEnter(Hero hero) {
         return RoomEvent.nothing(hero.getName() + " entra in " + name + ". " + description);
     }
+
+    @Override
+    public String getBackgroundName() { return "room_empty"; }
 }

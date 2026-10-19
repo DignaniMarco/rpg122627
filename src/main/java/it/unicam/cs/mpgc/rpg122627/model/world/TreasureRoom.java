@@ -81,4 +81,7 @@ public class TreasureRoom implements Room {
         }
         return "";
     }
+
+    @Override
+    public String getBackgroundName() { return "room_treasure"; }
 }

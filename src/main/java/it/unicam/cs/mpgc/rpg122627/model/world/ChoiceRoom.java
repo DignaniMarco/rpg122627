@@ -82,4 +82,7 @@ public class ChoiceRoom implements Room {
                 .formatted(hero.getName(), name, description);
         return RoomEvent.choice(message, options);
     }
+
+    @Override
+    public String getBackgroundName() { return "room_choice"; }
 }

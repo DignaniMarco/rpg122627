@@ -79,4 +79,7 @@ public class RestRoom implements Room {
                         .formatted(hero.getName(), name, healed,
                                 hero.getCurrentHp(), hero.getMaxHp()));
     }
+
+    @Override
+    public String getBackgroundName() { return "room_rest"; }
 }
