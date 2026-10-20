@@ -18,14 +18,14 @@ repositories {
 }
 
 javafx {
-    version = "21.0.4"
+    version = "21.0.8"
     modules = listOf("javafx.controls", "javafx.fxml")
 }
 
 dependencies {
     // JSON per la persistenza
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.18.1")
-    // Test
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.22.4")
+    implementation("com.fasterxml.jackson.core:jackson-core:2.22.4")
     testImplementation(platform("org.junit:junit-bom:5.10.3"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")

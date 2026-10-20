@@ -15,23 +15,14 @@ import it.unicam.cs.mpgc.rpg122627.persistence.JsonSaveManager;
 import it.unicam.cs.mpgc.rpg122627.persistence.SaveManager;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Button;
+import javafx.scene.control.*;
 import javafx.scene.control.ButtonBar.ButtonData;
-import javafx.scene.control.ButtonType;
-import javafx.scene.control.ChoiceDialog;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.Dialog;
-import javafx.scene.control.DialogPane;
-import javafx.scene.control.Label;
-import javafx.scene.control.ListCell;
 import javafx.scene.layout.GridPane;
+import javafx.stage.Modality;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import javafx.stage.Modality;
 
 /**
  * Controller della GUI: gestisce gli input dell'utente, chiama la facciata
@@ -62,7 +53,10 @@ public class GameController {
         view.getUseItemButton().setOnAction(e -> onUseItem());
         view.getFleeButton().setOnAction(e -> onPlayerAction(game.playerFlee()));
         view.getNewGameButton().setOnAction(e -> onNewGame());
-        view.getExitButton().setOnAction(e -> Platform.exit());
+        view.getExitButton().setOnAction(e -> {
+            Platform.exit();
+            System.exit(0);
+        });
     }
 
     public void start() {

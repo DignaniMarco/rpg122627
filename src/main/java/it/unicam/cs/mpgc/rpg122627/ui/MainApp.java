@@ -1,6 +1,7 @@
 package it.unicam.cs.mpgc.rpg122627.ui;
 
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.stage.Stage;
 
 /**
@@ -18,6 +19,10 @@ public class MainApp extends Application {
 
         primaryStage.setTitle("RPG122627 — Dungeon Crawler");
         primaryStage.setScene(view.buildScene());
+        primaryStage.setOnCloseRequest(e -> {
+            Platform.exit();
+            System.exit(0);
+        });
         primaryStage.show();
 
         controller.start();
